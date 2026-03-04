@@ -36,8 +36,6 @@ class PretrainedPredictor:
         team2_last5 = np.random.beta(3, 2, n_samples)
         team1_experience = np.random.exponential(100, n_samples)
         team2_experience = np.random.exponential(100, n_samples)
-        team1_earnings = np.random.exponential(1000000, n_samples)
-        team2_earnings = np.random.exponential(1000000, n_samples)
         team1_followers = np.random.exponential(50000, n_samples)
         team2_followers = np.random.exponential(50000, n_samples)
         
@@ -50,8 +48,6 @@ class PretrainedPredictor:
             team2_last5,
             team1_experience,
             team2_experience,
-            team1_earnings / 1000000,
-            team2_earnings / 1000000,
             team1_followers / 10000,
             team2_followers / 10000,
             (team1_rank < team2_rank).astype(int),
@@ -91,7 +87,6 @@ class PretrainedPredictor:
             'team1_win_rate', 'team2_win_rate',
             'team1_last5', 'team2_last5',
             'team1_experience', 'team2_experience',
-            'team1_earnings', 'team2_earnings',
             'team1_followers', 'team2_followers',
             'rank_advantage', 'win_rate_advantage', 'form_advantage'
         ]
@@ -119,8 +114,6 @@ class PretrainedPredictor:
             player2_stats.get('last5', 0.5),
             player1_stats.get('experience', 100),
             player2_stats.get('experience', 100),
-            player1_stats.get('earnings', 500000) / 1000000,
-            player2_stats.get('earnings', 500000) / 1000000,
             player1_stats.get('followers', 10000) / 10000,
             player2_stats.get('followers', 10000) / 10000,
             1 if player1_stats.get('rank', 15) < player2_stats.get('rank', 15) else 0,
@@ -165,11 +158,6 @@ class PretrainedPredictor:
             factors.append("Player 1 has more experience")
         elif p2_stats.get('experience', 100) > p1_stats.get('experience', 100) * 1.5:
             factors.append("Player 2 has more experience")
-        
-        if p1_stats.get('earnings', 500000) > p2_stats.get('earnings', 500000) * 2:
-            factors.append("Player 1 has higher earnings")
-        elif p2_stats.get('earnings', 500000) > p1_stats.get('earnings', 500000) * 2:
-            factors.append("Player 2 has higher earnings")
         
         return factors
 
