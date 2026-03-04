@@ -219,7 +219,6 @@ def show_h2h_tab():
                 st.metric("Experience (matches)", stats['experience'])
                 st.metric("Recent Form", f"{stats['last5']*100:.1f}%")
             with col3:
-                st.metric("Total Earnings", f"${stats['earnings']:,.0f}")
                 st.metric("Followers", f"{stats['followers']:,}")
 
 
@@ -377,7 +376,6 @@ def show_prediction_tab():
         - Win rate
         - Recent performance trends
         - Experience (total matches played)
-        - Earnings history
         - Follower metrics
         
         **Methodology:** Random Forest classification with feature scaling. Predictions are based on historical patterns and should be used for informational purposes only.
