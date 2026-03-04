@@ -254,15 +254,8 @@ def get_player_stats(player_name):
         if not ranks.empty:
             rank = int(ranks.iloc[0])
     
-    # Get experience
-    exp = 0
-    if player_name in df['team1_name'].values:
-        exp = int(df[df['team1_name'] == player_name]['team1_completed'].sum())
-    if player_name in df['team2_name'].values:
-        exp += int(df[df['team2_name'] == player_name]['team2_completed'].sum())
-    
-    if exp == 0:
-        exp = total
+    # Get experience (count of matches player appears in)
+    exp = len(player_matches)
     
     # Get earnings
     earnings = 500000

@@ -141,13 +141,8 @@ def get_player_stats(player_name: str):
     else:
         rank = 15
     
-    # Get experience
-    if player_name in df['team1_name'].values:
-        exp = df[df['team1_name'] == player_name]['team1_completed'].sum()
-    elif player_name in df['team2_name'].values:
-        exp = df[df['team2_name'] == player_name]['team2_completed'].sum()
-    else:
-        exp = total
+    # Get experience (count of matches player appears in)
+    exp = len(player_matches)
     
     # Get earnings
     earnings = 0
