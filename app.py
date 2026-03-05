@@ -7,7 +7,7 @@ Uses full CSV data loaded in memory (not exposed to users).
 import streamlit as st
 import pandas as pd
 from streamlit_app.data.embedded_data import get_data, TOTAL_MATCHES, GAME_OPTIONS
-from streamlit_app.utils.analysis import analyze_matchup, get_available_players, get_player_stats
+from streamlit_app.utils.analysis import analyze_matchup, get_available_players, get_player_stats, analyze_character_matchup, get_all_characters
 from streamlit_app.utils.visualization import get_viz_options, get_visualization, plot_h2h_comparison
 from streamlit_app.models.pretrained_models import predict_match, PLAYER_STATS_DATABASE
 
@@ -198,6 +198,25 @@ def show_h2h_tab():
                     st.info("🏆 The series is tied!")
                 else:
                     st.success(f"🏆 **{analysis['leader']}** leads the series by {analysis['margin']} match(es)")
+                
+                st.divider()
+                
+                if analysis['matches']:
+                    st.subheader("📋 Match Details")
+                    
+                    match_data = []
+                    for m in analysis['matches']:
+                        match_data.append({
+                            "Team 1": m['team1'],
+                            "Team 1 Char": m['team1_character'],
+                            "Score": f"{m['team1_score']} - {m['team2_score']}",
+                            "Team 2 Char": m['team2_character'],
+                            "Team 2": m['team2'],
+                            "Winner": m['winner']
+                        })
+                    
+                    match_df = pd.DataFrame(match_data)
+                    st.dataframe(match_df, use_container_width=True, hide_index=True)
                     
             else:
                 st.warning(f"No historical match data found between {player1} and {player2}.")
@@ -395,6 +414,95 @@ def show_prediction_tab():
         """)
 
 
+def show_character_matchup_tab():
+    """Show Character Matchup Analysis tab."""
+    st.title("🎭 Character Matchup Analysis")
+    
+    st.markdown("Analyze win rates and historical matchups between different characters/teams.")
+    
+    characters = get_all_characters()
+    
+    if not characters:
+        st.error("No character data available!")
+        return
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        char1 = st.selectbox(
+            "Select Character/Team 1",
+            characters,
+            index=0,
+            key="char1"
+        )
+    
+    with col2:
+        char2 = st.selectbox(
+            "Select Character/Team 2",
+            characters,
+            index=min(1, len(characters)-1),
+            key="char2"
+        )
+    
+    if st.button("Analyze Character Matchup", type="primary", use_container_width=True):
+        if char1 == char2:
+            st.error("Please select different characters!")
+        else:
+            with st.spinner("Analyzing matchups..."):
+                analysis = analyze_character_matchup(char1, char2)
+            
+            st.divider()
+            
+            if analysis['has_history']:
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric(f"{char1} Wins", analysis['character1_wins'], f"{analysis['character1_win_rate']:.1f}%")
+                with col2:
+                    st.metric(f"{char2} Wins", analysis['character2_wins'], f"{analysis['character2_win_rate']:.1f}%")
+                with col3:
+                    st.metric("Total Matches", analysis['total_matches'])
+                
+                st.divider()
+                
+                if analysis['leader'] == "Tied":
+                    st.info("🏆 The series is tied!")
+                else:
+                    st.success(f"🏆 **{analysis['leader']}** leads the matchup by {analysis['margin']} game(s)")
+                
+                st.divider()
+                
+                if analysis['matches']:
+                    st.subheader("📋 Match History")
+                    
+                    match_data = []
+                    for m in analysis['matches']:
+                        match_data.append({
+                            "Team 1": m['team1'],
+                            "Team 1 Char": m['team1_character'],
+                            "Score": f"{m['team1_score']} - {m['team2_score']}",
+                            "Team 2 Char": m['team2_character'],
+                            "Team 2": m['team2'],
+                            "Winner": m['winner']
+                        })
+                    
+                    match_df = pd.DataFrame(match_data)
+                    st.dataframe(match_df, use_container_width=True, hide_index=True)
+                    
+            else:
+                st.warning(f"No historical match data found between {char1} and {char2}.")
+    
+    st.divider()
+    
+    with st.expander("ℹ️ About Character Matchup Analysis"):
+        st.write("""
+        This analysis shows historical win rates between different characters/teams.
+        
+        **Note:** Character matchups are based on the team/character tag used in each match.
+        Some matches may not have character data available.
+        """)
+
+
 def main():
     """Main application."""
     apply_custom_styles()
@@ -411,6 +519,7 @@ def main():
     tabs = {
         "📊 Data": show_data_tab,
         "⚔️ Head-to-Head": show_h2h_tab,
+        "🎭 Character Matchup": show_character_matchup_tab,
         "📈 Visualizations": show_visualization_tab,
         "🔮 Predictions": show_prediction_tab
     }

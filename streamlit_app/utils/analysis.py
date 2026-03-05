@@ -73,6 +73,26 @@ def analyze_matchup(player1: str, player2: str):
         leader = "Tied"
         margin = 0
     
+    match_details = []
+    for _, match in matches.iterrows():
+        t1_name = match.get('team1_name', '')
+        t2_name = match.get('team2_name', '')
+        t1_char = match.get('team1_character_tag', '')
+        t2_char = match.get('team2_character_tag', '')
+        t1_score = match.get('team1_score', '')
+        t2_score = match.get('team2_score', '')
+        winner = match.get('winner_name', '')
+        
+        match_details.append({
+            "team1": t1_name,
+            "team2": t2_name,
+            "team1_character": t1_char,
+            "team2_character": t2_char,
+            "team1_score": t1_score,
+            "team2_score": t2_score,
+            "winner": winner
+        })
+    
     return {
         "player1": player1,
         "player2": player2,
@@ -84,7 +104,7 @@ def analyze_matchup(player1: str, player2: str):
         "leader": leader,
         "margin": margin,
         "has_history": total > 0,
-        "matches": matches.to_dict('records')
+        "matches": match_details
     }
 
 
@@ -166,5 +186,111 @@ def get_player_stats(player_name: str):
         "earnings": float(earnings) if pd.notna(earnings) else 500000,
         "followers": int(followers) if pd.notna(followers) else 10000
     }
+
+def analyze_character_matchup(character1: str, character2: str):
+    """Analyze matchup between two characters/teams."""
+    df = get_data()
+    
+    if df is None or df.empty:
+        return {
+            "character1": character1, "character2": character2,
+            "character1_wins": 0, "character2_wins": 0,
+            "total_matches": 0, "character1_win_rate": 0,
+            "character2_win_rate": 0, "leader": "N/A",
+            "margin": 0, "has_history": False,
+            "matches": []
+        }
+    
+    mask = (
+        ((df['team1_character_tag'] == character1) & (df['team2_character_tag'] == character2)) |
+        ((df['team1_character_tag'] == character2) & (df['team2_character_tag'] == character1))
+    )
+    matches = df[mask]
+    
+    if matches.empty:
+        return {
+            "character1": character1, "character2": character2,
+            "character1_wins": 0, "character2_wins": 0,
+            "total_matches": 0, "character1_win_rate": 0,
+            "character2_win_rate": 0, "leader": "N/A",
+            "margin": 0, "has_history": False,
+            "matches": []
+        }
+    
+    char1_wins = 0
+    char2_wins = 0
+    total = len(matches)
+    
+    for _, match in matches.iterrows():
+        winner = match.get('winner_name')
+        if match.get('team1_character_tag') == character1:
+            if winner == match.get('team1_name'):
+                char1_wins += 1
+            else:
+                char2_wins += 1
+        else:
+            if winner == match.get('team1_name'):
+                char2_wins += 1
+            else:
+                char1_wins += 1
+    
+    c1_win_rate = (char1_wins / total) * 100 if total > 0 else 0
+    c2_win_rate = (char2_wins / total) * 100 if total > 0 else 0
+    
+    if char1_wins > char2_wins:
+        leader = character1
+        margin = char1_wins - char2_wins
+    elif char2_wins > char1_wins:
+        leader = character2
+        margin = char2_wins - char1_wins
+    else:
+        leader = "Tied"
+        margin = 0
+    
+    match_details = []
+    for _, match in matches.iterrows():
+        t1_name = match.get('team1_name', '')
+        t2_name = match.get('team2_name', '')
+        t1_char = match.get('team1_character_tag', '')
+        t2_char = match.get('team2_character_tag', '')
+        t1_score = match.get('team1_score', '')
+        t2_score = match.get('team2_score', '')
+        winner = match.get('winner_name', '')
+        
+        match_details.append({
+            "team1": t1_name,
+            "team2": t2_name,
+            "team1_character": t1_char,
+            "team2_character": t2_char,
+            "team1_score": t1_score,
+            "team2_score": t2_score,
+            "winner": winner
+        })
+    
+    return {
+        "character1": character1,
+        "character2": character2,
+        "character1_wins": char1_wins,
+        "character2_wins": char2_wins,
+        "total_matches": total,
+        "character1_win_rate": c1_win_rate,
+        "character2_win_rate": c2_win_rate,
+        "leader": leader,
+        "margin": margin,
+        "has_history": total > 0,
+        "matches": match_details
+    }
+
+
+def get_all_characters():
+    """Get all unique characters from the dataset."""
+    df = get_data()
+    if df is None or df.empty:
+        return []
+    chars = set()
+    chars.update(df['team1_character_tag'].dropna().unique())
+    chars.update(df['team2_character_tag'].dropna().unique())
+    return sorted([c for c in chars if c])
+
 
 import pandas as pd
