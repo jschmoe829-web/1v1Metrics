@@ -17,32 +17,21 @@ def get_data():
     return _df
 
 def load_data(csv_path=None):
-    """Load the data into memory from Parquet format."""
+    """Load the CSV data into memory."""
     global _df
     
     if csv_path is None:
         possible_paths = [
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), '1v1me_stakes.parquet'),
-            os.path.join(os.path.dirname(__file__), '..', '1v1me_stakes.parquet'),
-            'streamlit_app/1v1me_stakes.parquet',
-            '1v1me_stakes.parquet',
-        ]
-        
-        for parquet_path in possible_paths:
-            if os.path.exists(parquet_path):
-                _df = pd.read_parquet(parquet_path)
-                return _df
-        
-        fallback_csv = [
             os.path.join(os.path.dirname(os.path.dirname(__file__)), '1v1me_stakes_20260227_204857.csv'),
+            os.path.join(os.path.dirname(__file__), '..', '1v1me_stakes_20260227_204857.csv'),
             'streamlit_app/1v1me_stakes_20260227_204857.csv',
             '1v1me_stakes_20260227_204857.csv',
         ]
         
-        for csv_path in fallback_csv:
-            if os.path.exists(csv_path):
-                _df = pd.read_csv(csv_path, low_memory=False)
-                return _df
+        for path in possible_paths:
+            if os.path.exists(path):
+                csv_path = path
+                break
     
     if csv_path and os.path.exists(csv_path):
         _df = pd.read_csv(csv_path, low_memory=False)
