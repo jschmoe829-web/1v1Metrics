@@ -342,6 +342,15 @@ def show_prediction_tab():
                         st.success(f"🏆 **{player2}** is predicted to win!")
                     
                     st.metric("Confidence", f"{confidence:.1f}%")
+                    
+                    score_margin = result.get('score_margin', 0)
+                    if score_margin > 0:
+                        margin_text = f"+{score_margin:.1f}"
+                        margin_label = f"{player1} wins by ~{abs(score_margin):.0f} points"
+                    else:
+                        margin_text = f"{score_margin:.1f}"
+                        margin_label = f"{player2} wins by ~{abs(score_margin):.0f} points"
+                    st.metric("Predicted Margin", margin_text, margin_label)
                 
                 with col2:
                     st.write("#### Win Probability")
@@ -378,7 +387,11 @@ def show_prediction_tab():
         - Experience (total matches played)
         - Follower metrics
         
-        **Methodology:** Random Forest classification with feature scaling. Predictions are based on historical patterns and should be used for informational purposes only.
+        **Predictions include:**
+        - Winner prediction with confidence percentage
+        - Predicted score margin (positive = Player 1 wins by X, negative = Player 2 wins by X)
+        
+        **Methodology:** Random Forest classification (winner) and regression (margin) with feature scaling. Predictions are based on historical patterns and should be used for informational purposes only.
         """)
 
 
