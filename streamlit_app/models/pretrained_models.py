@@ -9,7 +9,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data.embedded_data import get_data
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 
 
@@ -18,6 +18,7 @@ class PretrainedPredictor:
     
     def __init__(self):
         self.model = None
+        self.margin_model = None
         self.scaler = StandardScaler()
         self.is_trained = False
         self._initialize_model()
@@ -80,6 +81,17 @@ class PretrainedPredictor:
             n_jobs=-1
         )
         self.model.fit(X_scaled, y)
+        
+        skill_diff = (team1_win_rate - team2_win_rate) * 20 + (team1_last5 - team2_last5) * 15 + (32 - team1_rank - (32 - team2_rank)) * 0.1
+        y_margin = skill_diff + np.random.normal(0, 3, n_samples)
+        
+        self.margin_model = RandomForestRegressor(
+            n_estimators=100,
+            max_depth=10,
+            random_state=42,
+            n_jobs=-1
+        )
+        self.margin_model.fit(X_scaled, y_margin)
         self.is_trained = True
         
         self.feature_names = [
@@ -127,11 +139,21 @@ class PretrainedPredictor:
         prediction = self.model.predict(X_scaled)[0]
         probabilities = self.model.predict_proba(X_scaled)[0]
         
+        margin_prediction = self.margin_model.predict(X_scaled)[0]
+        
+        predicted_winner = "Player 1" if prediction == 1 else "Player 2"
+        
+        if predicted_winner == "Player 1":
+            score_margin = abs(float(margin_prediction))
+        else:
+            score_margin = -abs(float(margin_prediction))
+        
         return {
-            "prediction": "Player 1" if prediction == 1 else "Player 2",
+            "prediction": predicted_winner,
             "confidence": float(max(probabilities)),
             "player1_probability": float(probabilities[1]),
             "player2_probability": float(probabilities[0]),
+            "score_margin": round(score_margin, 1),
             "factors": self._get_prediction_factors(player1_stats, player2_stats)
         }
     
