@@ -22,10 +22,10 @@ def load_data(csv_path=None):
     
     if csv_path is None:
         possible_paths = [
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), '1v1me_stakes_20260227_204857.csv'),
-            os.path.join(os.path.dirname(__file__), '..', '1v1me_stakes_20260227_204857.csv'),
-            'streamlit_app/1v1me_stakes_20260227_204857.csv',
-            '1v1me_stakes_20260227_204857.csv',
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), '.data_cache.bin'),
+            os.path.join(os.path.dirname(__file__), '..', '.data_cache.bin'),
+            'streamlit_app/.data_cache.bin',
+            '.data_cache.bin',
         ]
         
         for path in possible_paths:
