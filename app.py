@@ -9,7 +9,7 @@ import pandas as pd
 from streamlit_app.data.embedded_data import get_data, TOTAL_MATCHES, GAME_OPTIONS
 from streamlit_app.utils.analysis import analyze_matchup, get_available_players, get_player_stats, analyze_character_matchup, get_all_characters
 from streamlit_app.utils.visualization import get_viz_options, get_visualization, plot_h2h_comparison
-from streamlit_app.utils.card_generator import create_prediction_card, create_matchup_card
+from streamlit_app.utils.card_generator import create_prediction_card
 from streamlit_app.models.pretrained_models import predict_match, PLAYER_STATS_DATABASE
 
 
@@ -218,30 +218,6 @@ def show_h2h_tab():
                     
                     match_df = pd.DataFrame(match_data)
                     st.dataframe(match_df, use_container_width=True, hide_index=True)
-                    
-                    st.divider()
-                    
-                    h2h_card_buffer = create_matchup_card(
-                        player1, player2,
-                        analysis['player1_wins'],
-                        analysis['player2_wins'],
-                        analysis['total_matches'],
-                        analysis['leader']
-                    )
-                    
-                    col_h2h_1, col_h2h_2 = st.columns([2, 1])
-                    with col_h2h_1:
-                        st.image(h2h_card_buffer, caption="Shareable Matchup Card", use_container_width=True)
-                    with col_h2h_2:
-                        st.write("#### Share This Matchup")
-                        st.write("Download the card to share on social media!")
-                        st.download_button(
-                            label="📥 Download Card",
-                            data=h2h_card_buffer,
-                            file_name=f"matchup_{player1}_vs_{player2}.png",
-                            mime="image/png",
-                            use_container_width=True
-                        )
                     
             else:
                 st.warning(f"No historical match data found between {player1} and {player2}.")
