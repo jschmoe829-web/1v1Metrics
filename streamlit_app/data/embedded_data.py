@@ -5,10 +5,11 @@ Data is kept in memory only and not exposed to users.
 
 import pandas as pd
 import os
+import streamlit as st
 
-# Global DataFrame - loaded once, kept in memory
 _df = None
 
+@st.cache_data(ttl=0)
 def get_data():
     """Get the full DataFrame, loading it if necessary."""
     global _df

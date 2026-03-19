@@ -70,9 +70,14 @@ def show_data_tab():
     
     # Get scrape date for banner
     scrape_date = "Unknown"
-    if 'scrape_timestamp' in df.columns:
+    date_col = None
+    for col in ['end_date', 'scrape_timestamp', 'start_date']:
+        if col in df.columns:
+            date_col = col
+            break
+    if date_col:
         try:
-            scrape_date = pd.to_datetime(df['scrape_timestamp'].iloc[0]).strftime('%B %d, %Y')
+            scrape_date = pd.to_datetime(df[date_col].iloc[0]).strftime('%B %d, %Y')
         except:
             pass
     
