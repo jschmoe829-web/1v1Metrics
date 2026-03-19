@@ -216,12 +216,12 @@ def plot_top_winners():
     """Plot top winners by total wins."""
     df = get_data()
     
-    if df is None or df.empty or 'winner_name' not in df.columns:
+    if df is None or df.empty or 'winner' not in df.columns:
         fig = go.Figure()
         fig.add_annotation(text="No winner data", x=0.5, y=0.5)
         return fig
     
-    winners = df['winner_name'].value_counts().head(15)
+    winners = df['winner'].value_counts().head(15)
     
     fig = go.Figure(data=[
         go.Bar(

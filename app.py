@@ -112,7 +112,7 @@ def show_data_tab():
     
     with col2:
         st.write("#### Top 15 Winners")
-        winners = df['winner_name'].value_counts().head(15).reset_index()
+        winners = df['winner'].value_counts().head(15).reset_index()
         winners.columns = ['Player', 'Wins']
         st.dataframe(winners, hide_index=True, use_container_width=True)
     
@@ -125,7 +125,7 @@ def show_data_tab():
             'commentator_name', 'team1_name', 'team1_character_tag', 
             'team1p1_username', 'team1p2_username', 'team2_name', 
             'team2_character_tag', 'team2p1_username', 'team2p2_username', 
-            'winner_name', 'score_summary'
+            'winner', 'score_summary'
         ]
         # Filter to only existing columns
         cols_to_show = [c for c in cols_to_show if c in df.columns]
@@ -289,8 +289,8 @@ def show_visualization_tab():
         st.metric("Most Popular Game", top_game)
     
     with col3:
-        top_winner = df['winner_name'].value_counts().idxmax()
-        top_wins = df['winner_name'].value_counts().max()
+        top_winner = df['winner'].value_counts().idxmax()
+        top_wins = df['winner'].value_counts().max()
         st.metric("Top Winner", f"{top_winner} ({top_wins})")
 
 

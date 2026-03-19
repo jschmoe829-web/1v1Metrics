@@ -54,7 +54,7 @@ def analyze_matchup(player1: str, player2: str):
     total = len(matches)
     
     for _, match in matches.iterrows():
-        winner = match.get('winner_name')
+        winner = match.get('winner')
         if winner == player1:
             player1_wins += 1
         elif winner == player2:
@@ -77,11 +77,11 @@ def analyze_matchup(player1: str, player2: str):
     for _, match in matches.iterrows():
         t1_name = match.get('team1_name', '')
         t2_name = match.get('team2_name', '')
-        t1_char = match.get('team1_character_tag', '')
-        t2_char = match.get('team2_character_tag', '')
-        t1_score = match.get('team1_score', '')
-        t2_score = match.get('team2_score', '')
-        winner = match.get('winner_name', '')
+        t1_char = match.get('team1_players', match.get('team1_character_tag', ''))
+        t2_char = match.get('team2_players', match.get('team2_character_tag', ''))
+        t1_score = match.get('team1_scores', '')
+        t2_score = match.get('team2_scores', '')
+        winner = match.get('winner', '')
         
         match_details.append({
             "team1": t1_name,
@@ -124,12 +124,10 @@ def get_player_stats(player_name: str):
         }
     
     # Find all matches for this player
-    player_matches = df[
-        (df['team1_name'] == player_name) |
-        (df['team2_name'] == player_name) |
-        (df['team1p1_username'] == player_name) |
-        (df['team2p1_username'] == player_name)
-    ]
+    mask = (df['team1_name'] == player_name) | (df['team2_name'] == player_name)
+    if 'team1p1_username' in df.columns:
+        mask = mask | (df['team1p1_username'] == player_name) | (df['team2p1_username'] == player_name)
+    player_matches = df[mask]
     
     if player_matches.empty:
         return {
@@ -142,7 +140,7 @@ def get_player_stats(player_name: str):
     losses = 0
     
     for _, match in player_matches.iterrows():
-        winner = match.get('winner_name')
+        winner = match.get('winner')
         if winner == player_name:
             wins += 1
         else:
@@ -166,17 +164,19 @@ def get_player_stats(player_name: str):
     
     # Get earnings
     earnings = 0
-    if player_name in df['team1p1_username'].values:
-        earnings = df[df['team1p1_username'] == player_name]['team1p1_total_earnings'].iloc[0]
-    elif player_name in df['team2p1_username'].values:
-        earnings = df[df['team2p1_username'] == player_name]['team2p1_total_earnings'].iloc[0]
+    if 'team1p1_total_earnings' in df.columns and 'team1p1_username' in df.columns:
+        if player_name in df['team1p1_username'].values:
+            earnings = df[df['team1p1_username'] == player_name]['team1p1_total_earnings'].iloc[0]
+        elif player_name in df['team2p1_username'].values:
+            earnings = df[df['team2p1_username'] == player_name]['team2p1_total_earnings'].iloc[0]
     
     # Get followers
     followers = 0
-    if player_name in df['team1p1_username'].values:
-        followers = df[df['team1p1_username'] == player_name]['team1p1_followers'].iloc[0]
-    elif player_name in df['team2p1_username'].values:
-        followers = df[df['team2p1_username'] == player_name]['team2p1_followers'].iloc[0]
+    if 'team1p1_followers' in df.columns and 'team1p1_username' in df.columns:
+        if player_name in df['team1p1_username'].values:
+            followers = df[df['team1p1_username'] == player_name]['team1p1_followers'].iloc[0]
+        elif player_name in df['team2p1_username'].values:
+            followers = df[df['team2p1_username'] == player_name]['team2p1_followers'].iloc[0]
     
     return {
         "rank": int(rank) if pd.notna(rank) else 15,
@@ -222,7 +222,7 @@ def analyze_character_matchup(character1: str, character2: str):
     total = len(matches)
     
     for _, match in matches.iterrows():
-        winner = match.get('winner_name')
+        winner = match.get('winner')
         if match.get('team1_character_tag') == character1:
             if winner == match.get('team1_name'):
                 char1_wins += 1
@@ -251,11 +251,11 @@ def analyze_character_matchup(character1: str, character2: str):
     for _, match in matches.iterrows():
         t1_name = match.get('team1_name', '')
         t2_name = match.get('team2_name', '')
-        t1_char = match.get('team1_character_tag', '')
-        t2_char = match.get('team2_character_tag', '')
-        t1_score = match.get('team1_score', '')
-        t2_score = match.get('team2_score', '')
-        winner = match.get('winner_name', '')
+        t1_char = match.get('team1_players', match.get('team1_character_tag', ''))
+        t2_char = match.get('team2_players', match.get('team2_character_tag', ''))
+        t1_score = match.get('team1_scores', '')
+        t2_score = match.get('team2_scores', '')
+        winner = match.get('winner', '')
         
         match_details.append({
             "team1": t1_name,

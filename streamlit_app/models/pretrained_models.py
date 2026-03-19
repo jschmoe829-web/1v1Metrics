@@ -226,12 +226,10 @@ def get_player_stats(player_name):
         }
     
     # Find all matches for this player
-    player_matches = df[
-        (df['team1_name'] == player_name) |
-        (df['team2_name'] == player_name) |
-        (df['team1p1_username'] == player_name) |
-        (df['team2p1_username'] == player_name)
-    ]
+    mask = (df['team1_name'] == player_name) | (df['team2_name'] == player_name)
+    if 'team1p1_username' in df.columns:
+        mask = mask | (df['team1p1_username'] == player_name) | (df['team2p1_username'] == player_name)
+    player_matches = df[mask]
     
     if player_matches.empty:
         return {
@@ -244,7 +242,7 @@ def get_player_stats(player_name):
     losses = 0
     
     for _, match in player_matches.iterrows():
-        winner = match.get('winner_name')
+        winner = match.get('winner')
         if winner == player_name:
             wins += 1
         else:
@@ -269,25 +267,27 @@ def get_player_stats(player_name):
     
     # Get earnings
     earnings = 500000
-    if player_name in df['team1p1_username'].values:
-        earnings_vals = df[df['team1p1_username'] == player_name]['team1p1_total_earnings'].dropna()
-        if not earnings_vals.empty:
-            earnings = float(earnings_vals.iloc[0])
-    elif player_name in df['team2p1_username'].values:
-        earnings_vals = df[df['team2p1_username'] == player_name]['team2p1_total_earnings'].dropna()
-        if not earnings_vals.empty:
-            earnings = float(earnings_vals.iloc[0])
+    if 'team1p1_total_earnings' in df.columns and 'team1p1_username' in df.columns:
+        if player_name in df['team1p1_username'].values:
+            earnings_vals = df[df['team1p1_username'] == player_name]['team1p1_total_earnings'].dropna()
+            if not earnings_vals.empty:
+                earnings = float(earnings_vals.iloc[0])
+        elif player_name in df['team2p1_username'].values:
+            earnings_vals = df[df['team2p1_username'] == player_name]['team2p1_total_earnings'].dropna()
+            if not earnings_vals.empty:
+                earnings = float(earnings_vals.iloc[0])
     
     # Get followers
     followers = 10000
-    if player_name in df['team1p1_username'].values:
-        follower_vals = df[df['team1p1_username'] == player_name]['team1p1_followers'].dropna()
-        if not follower_vals.empty:
-            followers = int(follower_vals.iloc[0])
-    elif player_name in df['team2p1_username'].values:
-        follower_vals = df[df['team2p1_username'] == player_name]['team2p1_followers'].dropna()
-        if not follower_vals.empty:
-            followers = int(follower_vals.iloc[0])
+    if 'team1p1_followers' in df.columns and 'team1p1_username' in df.columns:
+        if player_name in df['team1p1_username'].values:
+            follower_vals = df[df['team1p1_username'] == player_name]['team1p1_followers'].dropna()
+            if not follower_vals.empty:
+                followers = int(follower_vals.iloc[0])
+        elif player_name in df['team2p1_username'].values:
+            follower_vals = df[df['team2p1_username'] == player_name]['team2p1_followers'].dropna()
+            if not follower_vals.empty:
+                followers = int(follower_vals.iloc[0])
     
     return {
         "rank": rank,
