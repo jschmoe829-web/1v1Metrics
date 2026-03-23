@@ -183,12 +183,14 @@ def plot_character_popularity():
     """Plot most popular characters/teams."""
     df = get_data()
     
-    if df is None or df.empty or 'team1_character_tag' not in df.columns:
+    char_col = 'team1_character_tag' if 'team1_character_tag' in df.columns else 'team1_players'
+    
+    if df is None or df.empty or char_col not in df.columns:
         fig = go.Figure()
         fig.add_annotation(text="No character data", x=0.5, y=0.5)
         return fig
     
-    char_dist = df['team1_character_tag'].value_counts().head(15)
+    char_dist = df[char_col].value_counts().head(15)
     
     fig = go.Figure(data=[
         go.Bar(

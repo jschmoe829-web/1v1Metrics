@@ -201,9 +201,22 @@ def analyze_character_matchup(character1: str, character2: str):
             "matches": []
         }
     
+    t1_char_col = 'team1_character_tag' if 'team1_character_tag' in df.columns else 'team1_players'
+    t2_char_col = 'team2_character_tag' if 'team2_character_tag' in df.columns else 'team2_players'
+    
+    if t1_char_col not in df.columns:
+        return {
+            "character1": character1, "character2": character2,
+            "character1_wins": 0, "character2_wins": 0,
+            "total_matches": 0, "character1_win_rate": 0,
+            "character2_win_rate": 0, "leader": "N/A",
+            "margin": 0, "has_history": False,
+            "matches": []
+        }
+    
     mask = (
-        ((df['team1_character_tag'] == character1) & (df['team2_character_tag'] == character2)) |
-        ((df['team1_character_tag'] == character2) & (df['team2_character_tag'] == character1))
+        ((df[t1_char_col] == character1) & (df[t2_char_col] == character2)) |
+        ((df[t1_char_col] == character2) & (df[t2_char_col] == character1))
     )
     matches = df[mask]
     
@@ -223,7 +236,7 @@ def analyze_character_matchup(character1: str, character2: str):
     
     for _, match in matches.iterrows():
         winner = match.get('winner')
-        if match.get('team1_character_tag') == character1:
+        if match.get(t1_char_col) == character1:
             if winner == match.get('team1_name'):
                 char1_wins += 1
             else:
@@ -288,8 +301,9 @@ def get_all_characters():
     if df is None or df.empty:
         return []
     chars = set()
-    chars.update(df['team1_character_tag'].dropna().unique())
-    chars.update(df['team2_character_tag'].dropna().unique())
+    for col in ['team1_character_tag', 'team2_character_tag', 'team1_players', 'team2_players']:
+        if col in df.columns:
+            chars.update(df[col].dropna().unique())
     return sorted([c for c in chars if c])
 
 
