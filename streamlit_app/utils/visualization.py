@@ -15,8 +15,7 @@ def get_viz_options():
         "Season Performance",
         "Team Win Rates",
         "Character/Team Popularity",
-        "Top Winners",
-        "Earnings Distribution"
+        "Top Winners"
     ]
 
 
@@ -322,8 +321,7 @@ def get_visualization(viz_type):
         "Season Performance": plot_season_performance,
         "Team Win Rates": plot_team_win_rates,
         "Character/Team Popularity": plot_character_popularity,
-        "Top Winners": plot_top_winners,
-        "Earnings Distribution": plot_earnings_distribution
+        "Top Winners": plot_top_winners
     }
     
     if viz_type in viz_functions:
