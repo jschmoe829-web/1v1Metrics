@@ -23,6 +23,9 @@ def load_data(csv_path=None):
     
     if csv_path is None:
         possible_paths = [
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Mar19_with_characters.csv'),
+            os.path.join(os.path.dirname(__file__), '..', 'Mar19_with_characters.csv'),
+            'Mar19_with_characters.csv',
             os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Mar19.csv'),
             os.path.join(os.path.dirname(__file__), '..', 'Mar19.csv'),
             'streamlit_app/Mar19.csv',
