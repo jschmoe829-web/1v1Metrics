@@ -9,6 +9,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data.embedded_data import HEAD_TO_HEAD_HISTORY, TOP_PLAYERS_TEAMS, get_data
 
 
+import pandas as pd
+
+
 def analyze_matchup(player1: str, player2: str):
     """Analyze head-to-head matchup between two players using full data."""
     df = get_data()
