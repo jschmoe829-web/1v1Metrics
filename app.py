@@ -112,7 +112,7 @@ def show_data_tab():
     
     with col2:
         st.write("#### Top 15 Winners")
-        winners = df['winner_name'].value_counts().head(15).reset_index()
+        winners = df['winner'].value_counts().head(15).reset_index()
         winners.columns = ['Player', 'Wins']
         st.dataframe(winners, hide_index=True, use_container_width=True)
     
@@ -218,7 +218,7 @@ def show_h2h_tab():
                             "Score": f"{m['team1_score']} - {m['team2_score']}",
                             "Team 2 Char": m['team2_character'],
                             "Team 2": m['team2'],
-                            "Winner": m['winner_name']
+                            "Winner": m['winner']
                         })
                     
                     match_df = pd.DataFrame(match_data)
@@ -289,8 +289,8 @@ def show_visualization_tab():
         st.metric("Most Popular Game", top_game)
     
     with col3:
-        top_winner = df['winner_name'].value_counts().idxmax()
-        top_wins = df['winner_name'].value_counts().max()
+        top_winner = df['winner'].value_counts().idxmax()
+        top_wins = df['winner'].value_counts().max()
         st.metric("Top Winner", f"{top_winner} ({top_wins})")
 
 
@@ -514,7 +514,7 @@ def show_character_matchup_tab():
                             "Score": f"{m['team1_score']} - {m['team2_score']}",
                             "Team 2 Char": m['team2_character'],
                             "Team 2": m['team2'],
-                            "Winner": m['winner_name']
+                            "Winner": m['winner']
                         })
                     
                     match_df = pd.DataFrame(match_data)
