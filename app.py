@@ -112,7 +112,7 @@ def show_data_tab():
     
     with col2:
         st.write("#### Top 15 Winners")
-        winners = df['winner'].value_counts().head(15).reset_index()
+        winners = df['winner_name'].value_counts().head(15).reset_index()
         winners.columns = ['Player', 'Wins']
         st.dataframe(winners, hide_index=True, use_container_width=True)
     
