@@ -271,27 +271,6 @@ def show_visualization_tab():
         with st.spinner("Generating chart..."):
             fig = get_visualization(selected_viz)
             st.plotly_chart(fig, use_container_width=True)
-    
-    st.divider()
-    
-    st.subheader("📊 Quick Stats")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        team1_wins = int((df['team1_placement'] == 1).sum())
-        team2_wins = int((df['team2_placement'] == 1).sum())
-        total_wins = team1_wins + team2_wins
-        st.metric("Team 1 Win %", f"{(team1_wins/total_wins)*100:.1f}%")
-    
-    with col2:
-        top_game = df['game_name'].value_counts().idxmax()
-        st.metric("Most Popular Game", top_game)
-    
-    with col3:
-        top_winner = df['winner'].value_counts().idxmax()
-        top_wins = df['winner'].value_counts().max()
-        st.metric("Top Winner", f"{top_winner} ({top_wins})")
 
 
 def show_prediction_tab():
