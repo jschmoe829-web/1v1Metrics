@@ -222,7 +222,7 @@ def plot_top_winners():
         fig.add_annotation(text="No winner data", x=0.5, y=0.5)
         return fig
     
-    winners = df['winner'].value_counts().head(15)
+    winners = df['winner_name'].value_counts().head(15)
     
     fig = go.Figure(data=[
         go.Bar(

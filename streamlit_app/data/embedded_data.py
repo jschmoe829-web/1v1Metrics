@@ -80,7 +80,7 @@ def compute_aggregates():
     WIN_DISTRIBUTION = {"Team 1": team1_wins, "Team 2": team2_wins}
     
     # Top winners
-    TOP_WINNERS = df[df['winner'].notna()]['winner'].value_counts().head(20).to_dict()
+    TOP_WINNERS = df[df['winner_name'].notna()]['winner_name'].value_counts().head(20).to_dict()
     
     # Season distribution
     if 'season_state_title_compact' in df.columns:
