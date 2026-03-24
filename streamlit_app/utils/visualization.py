@@ -4,7 +4,7 @@ Visualization Module - uses full data from embedded_data
 
 import plotly.graph_objects as go
 import plotly.express as px
-from data.embedded_data import get_data
+from streamlit_app.data.embedded_data import get_data
 
 
 def get_viz_options():
