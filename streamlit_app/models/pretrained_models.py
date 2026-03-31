@@ -29,13 +29,13 @@ class PretrainedPredictor:
         df = get_data()
         
         if df is None or df.empty or len(df) < 100:
-            self._initialize_synthetic_model()
+            self.is_trained = False
             return
         
         required_cols = ['team1_wins', 'team1_losses', 'team2_wins', 'team2_losses', 
                         'team1_rank', 'team2_rank', 'team1_placement']
         if not all(col in df.columns for col in required_cols):
-            self._initialize_synthetic_model()
+            self.is_trained = False
             return
         
         matches = df[df['team1_wins'].notna() & df['team1_losses'].notna() & 
@@ -43,7 +43,7 @@ class PretrainedPredictor:
                    df['team1_rank'].notna() & df['team2_rank'].notna()].copy()
         
         if len(matches) < 100:
-            self._initialize_synthetic_model()
+            self.is_trained = False
             return
         
         matches['team1_win_rate'] = matches['team1_wins'] / (matches['team1_wins'] + matches['team1_losses'])
@@ -61,7 +61,7 @@ class PretrainedPredictor:
         matches = matches[valid_mask]
         
         if len(matches) < 100:
-            self._initialize_synthetic_model()
+            self.is_trained = False
             return
         
         X = np.column_stack([
@@ -210,20 +210,47 @@ class PretrainedPredictor:
             dict with prediction and probability
         """
         if not self.is_trained:
-            return {"error": "Model not trained"}
+            return {"error": "Insufficient real data to train prediction model"}
         
         win_rate_diff = player1_stats.get('win_rate', 0.5) - player2_stats.get('win_rate', 0.5)
+        
+        p1_rank = player1_stats.get('rank') or 15
+        p2_rank = player2_stats.get('rank') or 15
+        p1_wr = player1_stats.get('win_rate') or 0.5
+        p2_wr = player2_stats.get('win_rate') or 0.5
+        p1_last5 = player1_stats.get('last5') or 0.5
+        p2_last5 = player2_stats.get('last5') or 0.5
+        p1_exp = player1_stats.get('experience') or 100
+        p2_exp = player2_stats.get('experience') or 100
+        
+        if p1_rank is None:
+            p1_rank = 15
+        if p2_rank is None:
+            p2_rank = 15
+        if p1_wr is None:
+            p1_wr = 0.5
+        if p2_wr is None:
+            p2_wr = 0.5
+        if p1_last5 is None:
+            p1_last5 = 0.5
+        if p2_last5 is None:
+            p2_last5 = 0.5
+        if p1_exp is None:
+            p1_exp = 100
+        if p2_exp is None:
+            p2_exp = 100
+        
         features = [
-            player1_stats.get('rank', 15),
-            player2_stats.get('rank', 15),
-            player1_stats.get('win_rate', 0.5),
-            player2_stats.get('win_rate', 0.5),
-            player1_stats.get('last5', 0.5),
-            player2_stats.get('last5', 0.5),
-            player1_stats.get('experience', 100),
-            player2_stats.get('experience', 100),
-            win_rate_diff,
-            1 if player1_stats.get('rank', 15) < player2_stats.get('rank', 15) else 0,
+            p1_rank,
+            p2_rank,
+            p1_wr,
+            p2_wr,
+            p1_last5,
+            p2_last5,
+            p1_exp,
+            p2_exp,
+            p1_wr - p2_wr,
+            1 if p1_rank < p2_rank else 0,
         ]
         
         X = np.array([features])
