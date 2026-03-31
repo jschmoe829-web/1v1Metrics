@@ -138,8 +138,6 @@ class PretrainedPredictor:
         team2_last5 = np.random.beta(3, 2, n_samples)
         team1_experience = np.random.exponential(100, n_samples)
         team2_experience = np.random.exponential(100, n_samples)
-        team1_followers = np.random.exponential(50000, n_samples)
-        team2_followers = np.random.exponential(50000, n_samples)
         
         X = np.column_stack([
             team1_rank,
@@ -150,11 +148,8 @@ class PretrainedPredictor:
             team2_last5,
             team1_experience,
             team2_experience,
-            team1_followers / 10000,
-            team2_followers / 10000,
+            team1_win_rate - team2_win_rate,
             (team1_rank < team2_rank).astype(int),
-            (team1_win_rate > team2_win_rate).astype(int),
-            (team1_last5 > team2_last5).astype(int),
         ])
         
         rank_diff = team2_rank - team1_rank
@@ -200,8 +195,7 @@ class PretrainedPredictor:
             'team1_win_rate', 'team2_win_rate',
             'team1_last5', 'team2_last5',
             'team1_experience', 'team2_experience',
-            'team1_followers', 'team2_followers',
-            'rank_advantage', 'win_rate_advantage', 'form_advantage'
+            'win_rate_diff', 'rank_advantage'
         ]
     
     def predict(self, player1_stats, player2_stats):
