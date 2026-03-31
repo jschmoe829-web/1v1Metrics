@@ -190,6 +190,14 @@ def get_player_stats(player_name):
     }
 
 
+PLAYER_STATS_DATABASE = {
+    "Bemo": {"rank": 2, "win_rate": 0.72, "last5": 0.75, "experience": 2800, "earnings": 4500000, "followers": 85000},
+    "Probe": {"rank": 4, "win_rate": 0.65, "last5": 0.62, "experience": 3200, "earnings": 3800000, "followers": 72000},
+    "NuckleDu": {"rank": 1, "win_rate": 0.88, "last5": 0.85, "experience": 3776, "earnings": 8500000, "followers": 150000},
+    "PunkDaGod": {"rank": 3, "win_rate": 0.85, "last5": 0.80, "experience": 2592, "earnings": 6200000, "followers": 95000},
+}
+
+
 def predict_match(player1, player2):
     """Predict match between two players using trained model."""
     predictor = PretrainedPredictor()
