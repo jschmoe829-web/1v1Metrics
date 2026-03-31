@@ -4,6 +4,7 @@ This module provides pre-trained model functionality without requiring users to 
 """
 
 import numpy as np
+import pandas as pd
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,7 +25,107 @@ class PretrainedPredictor:
         self._initialize_model()
     
     def _initialize_model(self):
-        """Initialize and train a pre-trained model with synthetic data based on real patterns."""
+        """Initialize and train a model on real historical match data."""
+        df = get_data()
+        
+        if df is None or df.empty or len(df) < 100:
+            self._initialize_synthetic_model()
+            return
+        
+        required_cols = ['team1_wins', 'team1_losses', 'team2_wins', 'team2_losses', 
+                        'team1_rank', 'team2_rank', 'team1_placement']
+        if not all(col in df.columns for col in required_cols):
+            self._initialize_synthetic_model()
+            return
+        
+        matches = df[df['team1_wins'].notna() & df['team1_losses'].notna() & 
+                   df['team2_wins'].notna() & df['team2_losses'].notna() &
+                   df['team1_rank'].notna() & df['team2_rank'].notna()].copy()
+        
+        if len(matches) < 100:
+            self._initialize_synthetic_model()
+            return
+        
+        matches['team1_win_rate'] = matches['team1_wins'] / (matches['team1_wins'] + matches['team1_losses'])
+        matches['team2_win_rate'] = matches['team2_wins'] / (matches['team2_wins'] + matches['team2_losses'])
+        matches['team1_total_games'] = matches['team1_wins'] + matches['team1_losses']
+        matches['team2_total_games'] = matches['team2_wins'] + matches['team2_losses']
+        matches['team1_last_five_numeric'] = matches['team1_last_five'].apply(self._parse_last_five)
+        matches['team2_last_five_numeric'] = matches['team2_last_five'].apply(self._parse_last_five)
+        
+        matches['y'] = (matches['team1_placement'] == 1).astype(int)
+        
+        valid_mask = (matches['team1_win_rate'].notna() & matches['team2_win_rate'].notna() &
+                     matches['team1_total_games'].notna() & matches['team2_total_games'].notna() &
+                     (matches['team1_total_games'] > 0) & (matches['team2_total_games'] > 0))
+        matches = matches[valid_mask]
+        
+        if len(matches) < 100:
+            self._initialize_synthetic_model()
+            return
+        
+        X = np.column_stack([
+            matches['team1_rank'].values,
+            matches['team2_rank'].values,
+            matches['team1_win_rate'].values,
+            matches['team2_win_rate'].values,
+            matches['team1_last_five_numeric'].fillna(0.5).values,
+            matches['team2_last_five_numeric'].fillna(0.5).values,
+            matches['team1_total_games'].values,
+            matches['team2_total_games'].values,
+            matches['team1_win_rate'].values - matches['team2_win_rate'].values,
+            (matches['team1_rank'] < matches['team2_rank']).astype(int).values,
+        ])
+        
+        y = matches['y'].values
+        
+        X_scaled = self.scaler.fit_transform(X)
+        
+        self.model = RandomForestClassifier(
+            n_estimators=200,
+            max_depth=12,
+            min_samples_split=5,
+            min_samples_leaf=2,
+            random_state=42,
+            n_jobs=-1
+        )
+        self.model.fit(X_scaled, y)
+        
+        self.margin_model = RandomForestRegressor(
+            n_estimators=200,
+            max_depth=12,
+            min_samples_split=5,
+            min_samples_leaf=2,
+            random_state=42,
+            n_jobs=-1
+        )
+        self.margin_model.fit(X_scaled, y)
+        
+        self.is_trained = True
+        
+        self.feature_names = [
+            'team1_rank', 'team2_rank',
+            'team1_win_rate', 'team2_win_rate',
+            'team1_last5', 'team2_last5',
+            'team1_experience', 'team2_experience',
+            'win_rate_diff', 'rank_advantage'
+        ]
+    
+    def _parse_last_five(self, val):
+        if pd.isna(val):
+            return 0.5
+        if isinstance(val, str):
+            try:
+                wins = val.count('W')
+                losses = val.count('L')
+                total = wins + losses
+                return wins / total if total > 0 else 0.5
+            except:
+                return 0.5
+        return 0.5
+    
+    def _initialize_synthetic_model(self):
+        """Fallback to synthetic data if insufficient real data."""
         np.random.seed(42)
         
         n_samples = 5000
