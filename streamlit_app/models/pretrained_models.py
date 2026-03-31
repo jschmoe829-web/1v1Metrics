@@ -1,6 +1,7 @@
 """
 Pre-trained ML models for match prediction.
 Loads pre-trained models for winner, margin, and blowout predictions.
+Supports game-specific models for better accuracy.
 """
 
 import numpy as np
@@ -16,15 +17,20 @@ from streamlit_app.data.embedded_data import get_data
 class PretrainedPredictor:
     """Loads pre-trained models for match predictions."""
     
-    def __init__(self):
+    def __init__(self, game=None):
         self.models = None
         self.is_trained = False
+        self.game = game
         self._load_model()
     
     def _load_model(self):
         """Load the pre-trained models."""
         model_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.join(model_dir, 'trained_model.pkl')
+        
+        if self.game:
+            model_path = os.path.join(model_dir, 'all_games_models.pkl')
+        else:
+            model_path = os.path.join(model_dir, 'trained_model.pkl')
         
         if not os.path.exists(model_path):
             self.is_trained = False
@@ -32,7 +38,15 @@ class PretrainedPredictor:
         
         try:
             with open(model_path, 'rb') as f:
-                self.models = pickle.load(f)
+                all_models = pickle.load(f)
+            
+            if self.game and self.game in all_models:
+                self.models = all_models[self.game]
+            elif self.game is None and 'winner_model' in all_models:
+                self.models = all_models
+            else:
+                self.models = all_models.get('Madden NFL', all_models.get('winner_model'))
+            
             self.is_trained = True
             self.feature_names = self.models.get('feature_names', [])
         except Exception as e:
@@ -135,7 +149,6 @@ class PretrainedPredictor:
         ]
     
     def _get_prediction_factors(self, p1_stats, p2_stats):
-        """Get key factors that influenced the prediction."""
         factors = []
         
         p1_wr = p1_stats.get('win_rate', 0.5)
@@ -157,6 +170,21 @@ class PretrainedPredictor:
             factors.append("Player 2 has better recent form")
         
         return factors
+
+
+def get_available_games():
+    """Get list of games with trained models."""
+    model_dir = os.path.dirname(os.path.abspath(__file__))
+    model_path = os.path.join(model_dir, 'all_games_models.pkl')
+    
+    if os.path.exists(model_path):
+        try:
+            with open(model_path, 'rb') as f:
+                models = pickle.load(f)
+            return models.get('__games__', [])
+        except:
+            pass
+    return []
 
 
 def get_player_stats(player_name):
@@ -245,9 +273,11 @@ PLAYER_STATS_DATABASE = {
 }
 
 
-def predict_match(player1, player2):
-    """Predict match between two players using trained model."""
-    predictor = PretrainedPredictor()
+def predict_match(player1, player2, game=None):
+    """Predict match between two players using game-specific model."""
+    predictor = PretrainedPredictor(game=game)
     p1_stats = get_player_stats(player1)
     p2_stats = get_player_stats(player2)
-    return predictor.predict(p1_stats, p2_stats)
+    result = predictor.predict(p1_stats, p2_stats)
+    result['game'] = game
+    return result

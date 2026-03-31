@@ -285,6 +285,11 @@ def show_prediction_tab():
         st.error("No data loaded!")
         return
     
+    # Get available games
+    game_options = ["All Games"]
+    if 'game_name' in df.columns:
+        game_options.extend(df['game_name'].dropna().unique().tolist())
+    
     # Get players with stats from the dataset
     all_players = set()
     for col in ['team1_name', 'team2_name', 'team1p1_username', 'team2p1_username']:
@@ -297,6 +302,17 @@ def show_prediction_tab():
         if p not in available_players:
             available_players.append(p)
     available_players = sorted(available_players)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        selected_game = st.selectbox(
+            "Select Game",
+            game_options,
+            index=0,
+            key="pred_game"
+        )
+        game = None if selected_game == "All Games" else selected_game
     
     col1, col2 = st.columns(2)
     
@@ -330,7 +346,7 @@ def show_prediction_tab():
             st.error("Please select different players!")
         else:
             with st.spinner("Running prediction model..."):
-                result = predict_match(player1, player2)
+                result = predict_match(player1, player2, game=game)
                 
                 st.divider()
                 
