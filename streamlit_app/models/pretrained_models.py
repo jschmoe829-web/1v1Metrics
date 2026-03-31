@@ -218,6 +218,7 @@ class PretrainedPredictor:
         if not self.is_trained:
             return {"error": "Model not trained"}
         
+        win_rate_diff = player1_stats.get('win_rate', 0.5) - player2_stats.get('win_rate', 0.5)
         features = [
             player1_stats.get('rank', 15),
             player2_stats.get('rank', 15),
@@ -227,11 +228,8 @@ class PretrainedPredictor:
             player2_stats.get('last5', 0.5),
             player1_stats.get('experience', 100),
             player2_stats.get('experience', 100),
-            player1_stats.get('followers', 10000) / 10000,
-            player2_stats.get('followers', 10000) / 10000,
+            win_rate_diff,
             1 if player1_stats.get('rank', 15) < player2_stats.get('rank', 15) else 0,
-            1 if player1_stats.get('win_rate', 0.5) > player2_stats.get('win_rate', 0.5) else 0,
-            1 if player1_stats.get('last5', 0.5) > player2_stats.get('last5', 0.5) else 0,
         ]
         
         X = np.array([features])
