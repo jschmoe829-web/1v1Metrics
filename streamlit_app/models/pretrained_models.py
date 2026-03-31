@@ -68,6 +68,31 @@ class PretrainedPredictor:
         p1_exp = player1_stats.get('experience') or 100
         p2_exp = player2_stats.get('experience') or 100
         
+        earnings1 = player1_stats.get('earnings') or 500000
+        earnings2 = player2_stats.get('earnings') or 500000
+        total_earnings = earnings1 + earnings2 + 1
+        earnings_ratio = earnings1 / total_earnings
+        
+        followers1 = player1_stats.get('followers') or 10000
+        followers2 = player2_stats.get('followers') or 10000
+        total_followers = followers1 + followers2 + 1
+        followers_ratio = followers1 / total_followers
+        
+        stake_ratio1 = player1_stats.get('stake_ratio') or 1.0
+        stake_ratio2 = player2_stats.get('stake_ratio') or 1.0
+        
+        is_partner1 = 1 if player1_stats.get('is_partner') else 0
+        is_partner2 = 1 if player2_stats.get('is_partner') else 0
+        
+        h2h_wr = player1_stats.get('h2h_winrate', 0.5)
+        h2h_games = player1_stats.get('h2h_games', 0)
+        
+        char_wr = player1_stats.get('char_matchup_wr', 0.5)
+        char_games = player1_stats.get('char_matchup_games', 0)
+        
+        p1_momentum = player1_stats.get('momentum', 0.5)
+        p2_momentum = player2_stats.get('momentum', 0.5)
+        
         features = [
             p1_rank, p2_rank,
             p1_wr, p2_wr,
@@ -75,6 +100,18 @@ class PretrainedPredictor:
             p1_exp, p2_exp,
             p1_wr - p2_wr,
             1 if p1_rank < p2_rank else 0,
+            h2h_wr,
+            h2h_games,
+            char_wr,
+            char_games,
+            p1_momentum,
+            p2_momentum,
+            earnings_ratio,
+            followers_ratio,
+            stake_ratio1,
+            stake_ratio2,
+            is_partner1,
+            is_partner2,
         ]
         
         X = np.array([features])
