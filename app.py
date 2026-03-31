@@ -347,14 +347,15 @@ def show_prediction_tab():
                     
                     st.metric("Confidence", f"{confidence:.1f}%")
                     
-                    score_margin = result.get('score_margin', 0)
-                    if score_margin > 0:
-                        margin_text = f"+{score_margin:.1f}"
-                        margin_label = f"{player1} wins by ~{abs(score_margin):.0f} points"
+                    predicted_margin = result.get('predicted_margin', 0)
+                    blowout_prob = result.get('blowout_probability', 0) * 100
+                    
+                    if winner == "Player 1":
+                        margin_label = f"{player1} wins by ~{abs(predicted_margin):.0f} rounds"
                     else:
-                        margin_text = f"{score_margin:.1f}"
-                        margin_label = f"{player2} wins by ~{abs(score_margin):.0f} points"
-                    st.metric("Predicted Margin", margin_text, margin_label)
+                        margin_label = f"{player2} wins by ~{abs(predicted_margin):.0f} rounds"
+                    st.metric("Predicted Margin", f"~{predicted_margin:.0f} rounds", margin_label)
+                    st.metric("Blowout Probability", f"{blowout_prob:.1f}%", "≥3 round difference" if blowout_prob > 50 else "<3 round difference")
                 
                 with col2:
                     st.write("#### Win Probability")
@@ -384,7 +385,7 @@ def show_prediction_tab():
                     player1, player2,
                     winner,
                     confidence,
-                    score_margin,
+                    predicted_margin,
                     result['player1_probability'],
                     result['player2_probability']
                 )
