@@ -43,7 +43,13 @@ class PretrainedPredictor:
                 'team1_win_rate', 'team2_win_rate',
                 'team1_last5', 'team2_last5',
                 'team1_exp', 'team2_exp',
-                'win_rate_diff', 'rank_advantage'
+                'win_rate_diff', 'rank_advantage',
+                'h2h_winrate', 'h2h_games',
+                'char_matchup_wr', 'char_matchup_games',
+                'team1_momentum', 'team2_momentum',
+                'earnings_ratio', 'followers_ratio',
+                'team1_stake_ratio', 'team2_stake_ratio',
+                'team1_partner', 'team2_partner'
             ]
         except Exception as e:
             self.is_trained = False
