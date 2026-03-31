@@ -1,6 +1,6 @@
 """
 Pre-trained ML models for match prediction.
-Loads a pre-trained model for match predictions.
+Loads pre-trained models for winner, margin, and blowout predictions.
 """
 
 import numpy as np
@@ -14,86 +14,106 @@ from streamlit_app.data.embedded_data import get_data
 
 
 class PretrainedPredictor:
-    """Loads pre-trained model for match predictions."""
+    """Loads pre-trained models for match predictions."""
     
     def __init__(self):
-        self.model = None
-        self.scaler = None
+        self.models = None
         self.is_trained = False
         self._load_model()
     
     def _load_model(self):
-        """Load the pre-trained model and scaler."""
+        """Load the pre-trained models."""
         model_dir = os.path.dirname(os.path.abspath(__file__))
         model_path = os.path.join(model_dir, 'trained_model.pkl')
-        scaler_path = os.path.join(model_dir, 'trained_scaler.pkl')
         
-        if not os.path.exists(model_path) or not os.path.exists(scaler_path):
+        if not os.path.exists(model_path):
             self.is_trained = False
             return
         
         try:
             with open(model_path, 'rb') as f:
-                self.model = pickle.load(f)
-            with open(scaler_path, 'rb') as f:
-                self.scaler = pickle.load(f)
+                self.models = pickle.load(f)
             self.is_trained = True
-            self.feature_names = [
-                'team1_rank', 'team2_rank',
-                'team1_win_rate', 'team2_win_rate',
-                'team1_last5', 'team2_last5',
-                'team1_exp', 'team2_exp',
-                'win_rate_diff', 'rank_advantage',
-                'h2h_winrate', 'h2h_games',
-                'char_matchup_wr', 'char_matchup_games',
-                'team1_momentum', 'team2_momentum',
-                'earnings_ratio', 'followers_ratio',
-                'team1_stake_ratio', 'team2_stake_ratio',
-                'team1_partner', 'team2_partner'
-            ]
+            self.feature_names = self.models.get('feature_names', [])
         except Exception as e:
             self.is_trained = False
+            print(f"Error loading model: {e}")
     
     def predict(self, player1_stats, player2_stats):
         """Predict match outcome between two players."""
         if not self.is_trained:
             return {"error": "No trained model available"}
         
-        p1_rank = player1_stats.get('rank') or 15
-        p2_rank = player2_stats.get('rank') or 15
-        p1_wr = player1_stats.get('win_rate') or 0.5
-        p2_wr = player2_stats.get('win_rate') or 0.5
-        p1_last5 = player1_stats.get('last5') or 0.5
-        p2_last5 = player2_stats.get('last5') or 0.5
-        p1_exp = player1_stats.get('experience') or 100
-        p2_exp = player2_stats.get('experience') or 100
+        features = self._build_features(player1_stats, player2_stats)
         
-        earnings1 = player1_stats.get('earnings') or 500000
-        earnings2 = player2_stats.get('earnings') or 500000
+        X = np.array([features])
+        
+        winner_model = self.models['winner_model']
+        winner_scaler = self.models['winner_scaler']
+        X_scaled = winner_scaler.transform(X)
+        
+        prediction = winner_model.predict(X_scaled)[0]
+        probabilities = winner_model.predict_proba(X_scaled)[0]
+        
+        predicted_winner = "Player 1" if prediction == 1 else "Player 2"
+        
+        margin_model = self.models['margin_model']
+        margin_scaler = self.models['margin_scaler']
+        X_margin_scaled = margin_scaler.transform(X)
+        predicted_margin = int(margin_model.predict(X_margin_scaled)[0])
+        
+        blowout_model = self.models['blowout_model']
+        blowout_scaler = self.models['blowout_scaler']
+        X_blowout_scaled = blowout_scaler.transform(X)
+        blowout_prob = float(blowout_model.predict_proba(X_blowout_scaled)[0][1])
+        
+        return {
+            "prediction": predicted_winner,
+            "confidence": float(max(probabilities)),
+            "player1_probability": float(probabilities[1]),
+            "player2_probability": float(probabilities[0]),
+            "predicted_margin": predicted_margin,
+            "blowout_probability": blowout_prob,
+            "is_blowout": blowout_prob > 0.5,
+            "factors": self._get_prediction_factors(player1_stats, player2_stats)
+        }
+    
+    def _build_features(self, p1_stats, p2_stats):
+        p1_rank = p1_stats.get('rank') or 15
+        p2_rank = p2_stats.get('rank') or 15
+        p1_wr = p1_stats.get('win_rate') or 0.5
+        p2_wr = p2_stats.get('win_rate') or 0.5
+        p1_last5 = p1_stats.get('last5') or 0.5
+        p2_last5 = p2_stats.get('last5') or 0.5
+        p1_exp = p1_stats.get('experience') or 100
+        p2_exp = p2_stats.get('experience') or 100
+        
+        earnings1 = p1_stats.get('earnings') or 500000
+        earnings2 = p2_stats.get('earnings') or 500000
         total_earnings = earnings1 + earnings2 + 1
         earnings_ratio = earnings1 / total_earnings
         
-        followers1 = player1_stats.get('followers') or 10000
-        followers2 = player2_stats.get('followers') or 10000
+        followers1 = p1_stats.get('followers') or 10000
+        followers2 = p2_stats.get('followers') or 10000
         total_followers = followers1 + followers2 + 1
         followers_ratio = followers1 / total_followers
         
-        stake_ratio1 = player1_stats.get('stake_ratio') or 1.0
-        stake_ratio2 = player2_stats.get('stake_ratio') or 1.0
+        stake_ratio1 = p1_stats.get('stake_ratio') or 1.0
+        stake_ratio2 = p2_stats.get('stake_ratio') or 1.0
         
-        is_partner1 = 1 if player1_stats.get('is_partner') else 0
-        is_partner2 = 1 if player2_stats.get('is_partner') else 0
+        is_partner1 = 1 if p1_stats.get('is_partner') else 0
+        is_partner2 = 1 if p2_stats.get('is_partner') else 0
         
-        h2h_wr = player1_stats.get('h2h_winrate', 0.5)
-        h2h_games = player1_stats.get('h2h_games', 0)
+        h2h_wr = p1_stats.get('h2h_winrate', 0.5)
+        h2h_games = p1_stats.get('h2h_games', 0)
         
-        char_wr = player1_stats.get('char_matchup_wr', 0.5)
-        char_games = player1_stats.get('char_matchup_games', 0)
+        char_wr = p1_stats.get('char_matchup_wr', 0.5)
+        char_games = p1_stats.get('char_matchup_games', 0)
         
-        p1_momentum = player1_stats.get('momentum', 0.5)
-        p2_momentum = player2_stats.get('momentum', 0.5)
+        p1_momentum = p1_stats.get('momentum', 0.5)
+        p2_momentum = p2_stats.get('momentum', 0.5)
         
-        features = [
+        return [
             p1_rank, p2_rank,
             p1_wr, p2_wr,
             p1_last5, p2_last5,
@@ -113,22 +133,6 @@ class PretrainedPredictor:
             is_partner1,
             is_partner2,
         ]
-        
-        X = np.array([features])
-        X_scaled = self.scaler.transform(X)
-        
-        prediction = self.model.predict(X_scaled)[0]
-        probabilities = self.model.predict_proba(X_scaled)[0]
-        
-        predicted_winner = "Player 1" if prediction == 1 else "Player 2"
-        
-        return {
-            "prediction": predicted_winner,
-            "confidence": float(max(probabilities)),
-            "player1_probability": float(probabilities[1]),
-            "player2_probability": float(probabilities[0]),
-            "factors": self._get_prediction_factors(player1_stats, player2_stats)
-        }
     
     def _get_prediction_factors(self, p1_stats, p2_stats):
         """Get key factors that influenced the prediction."""
