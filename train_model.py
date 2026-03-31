@@ -1,22 +1,32 @@
 """
 Model training and backtesting script for 1v1 match prediction.
 Run locally to train model, then commit the trained model for use in Streamlit app.
+
+Features:
+- Temporal split (train on older data, test on most recent)
+- 80/10/10 split (80% train, 10% validation, 10% test)
+- K-fold cross validation for robust accuracy estimation
 """
 
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score, KFold
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report, confusion_matrix
 import pickle
 import os
 import sys
+from datetime import datetime
 
 CSV_PATH = "1v1me_Mar31.csv"
 MODEL_PATH = "trained_model.pkl"
 SCALER_PATH = "trained_scaler.pkl"
-TRAIN_RATIO = 0.8
+
+TRAIN_RATIO = 0.80
+VAL_RATIO = 0.10
+TEST_RATIO = 0.10
+N_FOLDS = 5
 
 
 def parse_last_five(val):
@@ -33,6 +43,125 @@ def parse_last_five(val):
     return 0.5
 
 
+def compute_h2h_features(df, current_idx):
+    """Compute head-to-head features for a match given all historical data."""
+    if current_idx < 1:
+        return {'h2h_team1_wins': 0, 'h2h_team1_games': 0, 'h2h_team1_winrate': 0.5}
+    
+    current = df.iloc[current_idx]
+    team1_name = current.get('team1_name')
+    team2_name = current.get('team2_name')
+    
+    if pd.isna(team1_name) or pd.isna(team2_name):
+        return {'h2h_team1_wins': 0, 'h2h_team1_games': 0, 'h2h_team1_winrate': 0.5}
+    
+    past_matches = df.iloc[:current_idx]
+    
+    team1_vs_team2 = past_matches[
+        ((past_matches['team1_name'] == team1_name) & (past_matches['team2_name'] == team2_name)) |
+        ((past_matches['team1_name'] == team2_name) & (past_matches['team2_name'] == team1_name))
+    ]
+    
+    if len(team1_vs_team2) == 0:
+        return {'h2h_team1_wins': 0, 'h2h_team1_games': 0, 'h2h_team1_winrate': 0.5}
+    
+    team1_wins = 0
+    for _, match in team1_vs_team2.iterrows():
+        if match.get('team1_name') == team1_name:
+            if match.get('team1_placement') == 1:
+                team1_wins += 1
+        else:
+            if match.get('team2_placement') == 1:
+                team1_wins += 1
+    
+    total_games = len(team1_vs_team2)
+    winrate = team1_wins / total_games if total_games > 0 else 0.5
+    
+    return {
+        'h2h_team1_wins': team1_wins,
+        'h2h_team1_games': total_games,
+        'h2h_team1_winrate': winrate
+    }
+
+
+def compute_character_features(df, current_idx):
+    """Compute character matchup features."""
+    if current_idx < 1:
+        return {'char_matchup_wr': 0.5, 'char_matchup_games': 0}
+    
+    current = df.iloc[current_idx]
+    char1 = current.get('team1_character_tag')
+    char2 = current.get('team2_character_tag')
+    
+    if pd.isna(char1) or pd.isna(char2):
+        return {'char_matchup_wr': 0.5, 'char_matchup_games': 0}
+    
+    past_matches = df.iloc[:current_idx]
+    
+    char_matches = past_matches[
+        ((past_matches['team1_character_tag'] == char1) & (past_matches['team2_character_tag'] == char2)) |
+        ((past_matches['team1_character_tag'] == char2) & (past_matches['team2_character_tag'] == char1))
+    ]
+    
+    if len(char_matches) == 0:
+        return {'char_matchup_wr': 0.5, 'char_matchup_games': 0}
+    
+    char1_wins = 0
+    for _, match in char_matches.iterrows():
+        if match.get('team1_character_tag') == char1:
+            if match.get('team1_placement') == 1:
+                char1_wins += 1
+        else:
+            if match.get('team2_placement') == 1:
+                char1_wins += 1
+    
+    return {
+        'char_matchup_wr': char1_wins / len(char_matches),
+        'char_matchup_games': len(char_matches)
+    }
+
+
+def compute_momentum_features(df, current_idx, lookback=20):
+    """Compute momentum features for both teams."""
+    if current_idx < 1:
+        return {
+            'team1_momentum': 0.5, 'team2_momentum': 0.5,
+            'team1_recent_wr': 0.5, 'team2_recent_wr': 0.5
+        }
+    
+    current = df.iloc[current_idx]
+    team1_name = current.get('team1_name')
+    team2_name = current.get('team2_name')
+    
+    past = df.iloc[:current_idx].tail(lookback)
+    
+    team1_matches = past[(past['team1_name'] == team1_name) | (past['team2_name'] == team1_name)]
+    team2_matches = past[(past['team1_name'] == team2_name) | (past['team2_name'] == team2_name)]
+    
+    def calc_winrate(matches, team_name):
+        if len(matches) == 0:
+            return 0.5, 0
+        wins = 0
+        for _, m in matches.iterrows():
+            if m.get('team1_name') == team_name:
+                if m.get('team1_placement') == 1:
+                    wins += 1
+            else:
+                if m.get('team2_placement') == 1:
+                    wins += 1
+        return wins / len(matches), len(matches)
+    
+    team1_wr, team1_n = calc_winrate(team1_matches, team1_name)
+    team2_wr, team2_n = calc_winrate(team2_matches, team2_name)
+    
+    return {
+        'team1_momentum': team1_wr,
+        'team2_momentum': team2_wr,
+        'team1_recent_wr': team1_wr,
+        'team2_recent_wr': team2_wr
+    }
+
+
 def prepare_data(df):
     """Prepare features from raw data."""
     required_cols = ['team1_wins', 'team1_losses', 'team2_wins', 'team2_losses', 
@@ -40,18 +169,22 @@ def prepare_data(df):
     
     if not all(col in df.columns for col in required_cols):
         print(f"Missing required columns. Available: {df.columns.tolist()}")
-        return None, None
+        return None, None, None
     
     matches = df[df['team1_wins'].notna() & df['team1_losses'].notna() & 
                df['team2_wins'].notna() & df['team2_losses'].notna() &
                df['team1_rank'].notna() & df['team2_rank'].notna() &
                df['team1_placement'].notna()].copy()
     
+    if 'start_date' in matches.columns:
+        matches['start_date'] = pd.to_datetime(matches['start_date'], errors='coerce')
+        matches = matches.sort_values('start_date').reset_index(drop=True)
+    
     print(f"Found {len(matches)} matches with valid win/loss data")
     
     if len(matches) < 100:
         print("Insufficient data for training")
-        return None, None
+        return None, None, None
     
     matches['team1_win_rate'] = matches['team1_wins'] / (matches['team1_wins'] + matches['team1_losses'])
     matches['team2_win_rate'] = matches['team2_wins'] / (matches['team2_wins'] + matches['team2_losses'])
@@ -73,24 +206,74 @@ def prepare_data(df):
     
     if len(matches) < 100:
         print("Insufficient valid data for training")
-        return None, None
+        return None, None, None
     
-    X = np.column_stack([
-        matches['team1_rank'].values,
-        matches['team2_rank'].values,
-        matches['team1_win_rate'].values,
-        matches['team2_win_rate'].values,
-        matches['team1_last_five'].fillna(0.5).values,
-        matches['team2_last_five'].fillna(0.5).values,
-        matches['team1_total_games'].values,
-        matches['team2_total_games'].values,
-        (matches['team1_win_rate'] - matches['team2_win_rate']).values,
-        (matches['team1_rank'] < matches['team2_rank']).astype(int).values,
-    ])
+    print("Computing advanced features (h2h, character matchup, momentum)...")
     
+    feature_list = []
+    for idx in range(len(matches)):
+        row = matches.iloc[idx]
+        
+        base_features = [
+            row['team1_rank'],
+            row['team2_rank'],
+            row['team1_win_rate'],
+            row['team2_win_rate'],
+            row['team1_last_five'] if pd.notna(row['team1_last_five']) else 0.5,
+            row['team2_last_five'] if pd.notna(row['team2_last_five']) else 0.5,
+            row['team1_total_games'],
+            row['team2_total_games'],
+            row['team1_win_rate'] - row['team2_win_rate'],
+            (row['team1_rank'] < row['team2_rank']).astype(int),
+        ]
+        
+        h2h = compute_h2h_features(matches, idx)
+        char = compute_character_features(matches, idx)
+        mom = compute_momentum_features(matches, idx)
+        
+        earnings1 = row.get('team1p1_total_earnings', 0) or 0
+        earnings2 = row.get('team2p1_total_earnings', 0) or 0
+        total_earnings = earnings1 + earnings2 + 1
+        earnings_ratio = earnings1 / total_earnings
+        
+        followers1 = row.get('team1p1_followers', 0) or 0
+        followers2 = row.get('team2p1_followers', 0) or 0
+        total_followers = followers1 + followers2 + 1
+        followers_ratio = followers1 / total_followers
+        
+        stake1 = row.get('team1_stakes_won', 0) or 0
+        stake_placed1 = row.get('team1_stakes_placed', 1) or 1
+        stake_ratio1 = stake1 / stake_placed1 if stake_placed1 > 0 else 1.0
+        
+        stake2 = row.get('team2_stakes_won', 0) or 0
+        stake_placed2 = row.get('team2_stakes_placed', 1) or 1
+        stake_ratio2 = stake2 / stake_placed2 if stake_placed2 > 0 else 1.0
+        
+        advanced_features = [
+            h2h['h2h_team1_winrate'],
+            h2h['h2h_team1_games'],
+            char['char_matchup_wr'],
+            char['char_matchup_games'],
+            mom['team1_momentum'],
+            mom['team2_momentum'],
+            earnings_ratio,
+            followers_ratio,
+            stake_ratio1,
+            stake_ratio2,
+            (row.get('team1p1_is_partner', '') == 'True'),
+            (row.get('team2p1_is_partner', '') == 'True'),
+        ]
+        
+        feature_list.append(base_features + advanced_features)
+        
+        if (idx + 1) % 2000 == 0:
+            print(f"  Processed {idx + 1}/{len(matches)} matches...")
+    
+    X = np.array(feature_list)
     y = matches['y'].values
+    dates = matches['start_date'].values if 'start_date' in matches.columns else None
     
-    return X, y
+    return X, y, dates
 
 
 def train_model(X_train, y_train):
@@ -111,16 +294,18 @@ def train_model(X_train, y_train):
     return model, scaler
 
 
-def evaluate_model(model, scaler, X_test, y_test, model_name="Model"):
-    """Evaluate model on test set."""
+def evaluate_model(model, scaler, X_test, y_test, X_train=None, y_train=None, model_name="Model"):
+    """Evaluate model on test set with optional K-fold cross validation."""
     X_test_scaled = scaler.transform(X_test)
     y_pred = model.predict(X_test_scaled)
+    
+    acc = accuracy_score(y_test, y_pred)
     
     print(f"\n{'='*50}")
     print(f"{model_name} Evaluation Results")
     print(f"{'='*50}")
     print(f"Test set size: {len(y_test)}")
-    print(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
+    print(f"Accuracy: {acc:.4f}")
     print(f"Precision: {precision_score(y_test, y_pred, zero_division=0):.4f}")
     print(f"Recall: {recall_score(y_test, y_pred, zero_division=0):.4f}")
     print(f"F1 Score: {f1_score(y_test, y_pred, zero_division=0):.4f}")
@@ -129,7 +314,30 @@ def evaluate_model(model, scaler, X_test, y_test, model_name="Model"):
     print(f"\nClassification Report:")
     print(classification_report(y_test, y_pred, zero_division=0))
     
-    return accuracy_score(y_test, y_pred)
+    if X_train is not None and y_train is not None:
+        print(f"\n{'='*50}")
+        print(f"K-Fold Cross Validation ({N_FOLDS} folds)")
+        print(f"{'='*50}")
+        
+        kfold = KFold(n_splits=N_FOLDS, shuffle=True, random_state=42)
+        X_train_scaled = scaler.fit_transform(X_train)
+        
+        cv_model = RandomForestClassifier(
+            n_estimators=200,
+            max_depth=12,
+            min_samples_split=5,
+            min_samples_leaf=2,
+            random_state=42,
+            n_jobs=-1
+        )
+        
+        cv_scores = cross_val_score(cv_model, X_train_scaled, y_train, cv=kfold, scoring='accuracy')
+        print(f"CV Accuracy scores: {cv_scores}")
+        print(f"CV Mean Accuracy: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
+        
+        print(f"\n*** The true model accuracy is approximately {cv_scores.mean():.4f} ***")
+    
+    return acc
 
 
 def save_model(model, scaler, model_path=MODEL_PATH, scaler_path=SCALER_PATH):
@@ -152,26 +360,39 @@ def load_model(model_path=MODEL_PATH, scaler_path=SCALER_PATH):
 
 
 def run_backtest():
-    """Main backtesting workflow."""
+    """Main backtesting workflow with temporal split and K-fold cross validation."""
     print("Loading data...")
     df = pd.read_csv(CSV_PATH, low_memory=False)
     print(f"Total records: {len(df)}")
     
-    X, y = prepare_data(df)
+    X, y, dates = prepare_data(df)
     if X is None:
         return
     
-    split_idx = int(len(X) * TRAIN_RATIO)
-    X_train, X_test = X[:split_idx], X[split_idx:]
-    y_train, y_test = y[:split_idx], y[split_idx:]
+    split_train = int(len(X) * TRAIN_RATIO)
+    split_val = int(len(X) * (TRAIN_RATIO + VAL_RATIO))
     
-    print(f"\nTrain set: {len(X_train)} samples")
-    print(f"Test set: {len(X_test)} samples")
+    X_train = X[:split_train]
+    X_val = X[split_train:split_val]
+    X_test = X[split_val:]
+    
+    y_train = y[:split_train]
+    y_val = y[split_train:split_val]
+    y_test = y[split_val:]
+    
+    print(f"\nTemporal Split (80/10/10):")
+    print(f"  Train: {len(X_train)} samples (oldest)")
+    print(f"  Val:   {len(X_val)} samples (middle)")
+    print(f"  Test:  {len(X_test)} samples (most recent)")
+    
+    if dates is not None:
+        print(f"  Train date range: {dates[0]} to {dates[split_train-1]}")
+        print(f"  Test date range: {dates[split_val]} to {dates[-1]}")
     
     print("\nTraining model...")
     model, scaler = train_model(X_train, y_train)
     
-    evaluate_model(model, scaler, X_test, y_test, "RandomForest")
+    evaluate_model(model, scaler, X_test, y_test, X_train, y_train, "RandomForest")
     
     print("\n" + "="*50)
     print("Testing with GradientBoosting...")
@@ -189,7 +410,7 @@ def run_backtest():
     )
     gb_model.fit(X_train_scaled, y_train)
     
-    evaluate_model(gb_model, scaler2, X_test, y_test, "GradientBoosting")
+    evaluate_model(gb_model, scaler2, X_test, y_test, X_train, y_train, "GradientBoosting")
     
     save_model(model, scaler)
     
@@ -201,7 +422,13 @@ def run_backtest():
         'team1_win_rate', 'team2_win_rate',
         'team1_last5', 'team2_last5',
         'team1_exp', 'team2_exp',
-        'win_rate_diff', 'rank_advantage'
+        'win_rate_diff', 'rank_advantage',
+        'h2h_winrate', 'h2h_games',
+        'char_matchup_wr', 'char_matchup_games',
+        'team1_momentum', 'team2_momentum',
+        'earnings_ratio', 'followers_ratio',
+        'team1_stake_ratio', 'team2_stake_ratio',
+        'team1_partner', 'team2_partner'
     ]
     importances = model.feature_importances_
     for name, imp in sorted(zip(feature_names, importances), key=lambda x: x[1], reverse=True):
