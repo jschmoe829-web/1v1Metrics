@@ -366,12 +366,16 @@ def show_prediction_tab():
                     predicted_margin = result.get('predicted_margin', 0)
                     blowout_prob = result.get('blowout_probability', 0) * 100
                     
+                    score_label = "Rounds/Score"
+                    if game in ['Madden NFL', 'NBA 2K', 'College Football']:
+                        score_label = "Score"
+                    
                     if winner == "Player 1":
-                        margin_label = f"{player1} wins by ~{abs(predicted_margin):.0f} rounds"
+                        margin_label = f"{player1} wins by ~{abs(predicted_margin):.0f}"
                     else:
-                        margin_label = f"{player2} wins by ~{abs(predicted_margin):.0f} rounds"
-                    st.metric("Predicted Margin", f"~{predicted_margin:.0f} rounds", margin_label)
-                    st.metric("Blowout Probability", f"{blowout_prob:.1f}%", "≥3 round difference" if blowout_prob > 50 else "<3 round difference")
+                        margin_label = f"{player2} wins by ~{abs(predicted_margin):.0f}"
+                    st.metric(f"Predicted Margin ({score_label})", f"~{predicted_margin:.0f}", margin_label)
+                    st.metric("Blowout Probability", f"{blowout_prob:.1f}%", "≥3 difference" if blowout_prob > 50 else "<3 difference")
                 
                 with col2:
                     st.write("#### Win Probability")
