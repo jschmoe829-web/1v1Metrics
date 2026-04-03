@@ -58,6 +58,12 @@ def safe_score_to_int(val):
     try:
         return int(val_str)
     except:
+        try:
+            parts = val_str.split('-')
+            if len(parts) == 2:
+                return int(parts[1].strip()) - int(parts[0].strip())
+        except:
+            pass
         return 0
 
 
@@ -187,6 +193,18 @@ def prepare_data(df, game=None):
     if len(matches) < 50:
         return None, None, None, None
     
+    game_max_margin = {
+        'Counter Strike 2': 9,
+        'COD: Black Ops': 5,
+        'Street Fighter': 3,
+        'Tekken': 3,
+    }.get(game, 5)
+    
+    rounds_per_win = {
+        'Tekken': 3,
+        'Street Fighter': 2,
+    }.get(game, 1)
+    
     matches['team1_win_rate'] = matches['team1_wins'] / (matches['team1_wins'] + matches['team1_losses'])
     matches['team2_win_rate'] = matches['team2_wins'] / (matches['team2_wins'] + matches['team2_losses'])
     matches['team1_total_games'] = matches['team1_wins'] + matches['team1_losses']
@@ -198,9 +216,12 @@ def prepare_data(df, game=None):
     
     team1_scores = matches['team1_score'].apply(safe_score_to_int)
     team2_scores = matches['team2_score'].apply(safe_score_to_int)
-    matches['score_margin'] = (team1_scores - team2_scores).abs()
+    team1_actual_wins = (team1_scores / rounds_per_win).round().clip(lower=0).astype(int)
+    team2_actual_wins = (team2_scores / rounds_per_win).round().clip(lower=0).astype(int)
+    matches['score_margin'] = (team1_actual_wins - team2_actual_wins).abs()
+    matches['score_margin'] = matches['score_margin'].clip(upper=game_max_margin)
     matches['y_margin'] = matches['score_margin']
-    matches['y_blowout'] = (matches['score_margin'] >= 3).astype(int)
+    matches['y_blowout'] = (matches['score_margin'] >= 2).astype(int)
     
     valid_mask = (
         matches['team1_win_rate'].notna() & matches['team2_win_rate'].notna() &

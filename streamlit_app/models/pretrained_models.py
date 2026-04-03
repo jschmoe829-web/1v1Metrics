@@ -212,10 +212,10 @@ def get_player_stats(player_name):
     losses = 0
     
     for _, match in player_matches.iterrows():
-        winner = match.get('winner')
+        winner = match.get('winner_name')
         if winner == player_name:
             wins += 1
-        else:
+        elif pd.notna(winner):
             losses += 1
     
     total = wins + losses
