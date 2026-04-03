@@ -27,10 +27,7 @@ class PretrainedPredictor:
         """Load the pre-trained models."""
         model_dir = os.path.dirname(os.path.abspath(__file__))
         
-        if self.game:
-            model_path = os.path.join(model_dir, 'all_games_models.pkl')
-        else:
-            model_path = os.path.join(model_dir, 'trained_model.pkl')
+        model_path = os.path.join(model_dir, 'all_games_models.pkl')
         
         if not os.path.exists(model_path):
             self.is_trained = False
