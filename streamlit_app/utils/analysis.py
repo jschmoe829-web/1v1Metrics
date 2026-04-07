@@ -323,4 +323,70 @@ def get_all_characters():
     return sorted([c for c in chars if c])
 
 
+def get_player_team_stats(player_name: str):
+    """Get most played team/character for a player and their win rate with it."""
+    df = get_data()
+    
+    if df is None or df.empty:
+        return None
+    
+    matches_as_team1 = df[df['team1_name'] == player_name]
+    matches_as_team2 = df[df['team2_name'] == player_name]
+    
+    team_stats = {}
+    
+    for _, match in matches_as_team1.iterrows():
+        team = match.get('team1_character_tag', '')
+        if team:
+            if team not in team_stats:
+                team_stats[team] = {'wins': 0, 'losses': 0, 'total': 0}
+            winner = match.get('winner_name', match.get('winner', ''))
+            if winner == player_name:
+                team_stats[team]['wins'] += 1
+            else:
+                team_stats[team]['losses'] += 1
+            team_stats[team]['total'] += 1
+    
+    for _, match in matches_as_team2.iterrows():
+        team = match.get('team2_character_tag', '')
+        if team:
+            if team not in team_stats:
+                team_stats[team] = {'wins': 0, 'losses': 0, 'total': 0}
+            winner = match.get('winner_name', match.get('winner', ''))
+            if winner == player_name:
+                team_stats[team]['wins'] += 1
+            else:
+                team_stats[team]['losses'] += 1
+            team_stats[team]['total'] += 1
+    
+    if not team_stats:
+        return None
+    
+    most_played = max(team_stats.items(), key=lambda x: x[1]['total'])
+    team_name = most_played[0]
+    stats = most_played[1]
+    win_rate = (stats['wins'] / stats['total']) * 100 if stats['total'] > 0 else 0
+    
+    all_teams_sorted = sorted(team_stats.items(), key=lambda x: x[1]['total'], reverse=True)
+    
+    return {
+        'player': player_name,
+        'most_played_team': team_name,
+        'wins': stats['wins'],
+        'losses': stats['losses'],
+        'total_games': stats['total'],
+        'win_rate': win_rate,
+        'all_teams': [
+            {
+                'team': name,
+                'wins': s['wins'],
+                'losses': s['losses'],
+                'total': s['total'],
+                'win_rate': (s['wins'] / s['total']) * 100 if s['total'] > 0 else 0
+            }
+            for name, s in all_teams_sorted
+        ]
+    }
+
+
 import pandas as pd

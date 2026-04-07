@@ -7,7 +7,7 @@ Uses full CSV data loaded in memory (not exposed to users).
 import streamlit as st
 import pandas as pd
 from streamlit_app.data.embedded_data import get_data, TOTAL_MATCHES, GAME_OPTIONS
-from streamlit_app.utils.analysis import analyze_matchup, get_available_players, get_player_stats, analyze_character_matchup, get_all_characters
+from streamlit_app.utils.analysis import analyze_matchup, get_available_players, get_player_stats, analyze_character_matchup, get_all_characters, get_player_team_stats
 from streamlit_app.utils.visualization import get_viz_options, get_visualization, plot_h2h_comparison
 from streamlit_app.utils.card_generator import create_prediction_card
 from streamlit_app.models.pretrained_models import predict_match, PLAYER_STATS_DATABASE
@@ -535,6 +535,70 @@ def show_character_matchup_tab():
         """)
 
 
+def show_player_team_tab():
+    """Show Player Team/Character Analysis tab."""
+    st.title("🎮 Player Team Analysis")
+    
+    st.markdown("Enter a player name to see their most played team/character and win rate.")
+    
+    df = get_data()
+    
+    if df is None or df.empty:
+        st.error("No data loaded!")
+        return
+    
+    all_players = set()
+    for col in ['team1_name', 'team2_name', 'team1p1_username', 'team2p1_username']:
+        if col in df.columns:
+            all_players.update(df[col].dropna().unique())
+    available_players = sorted(list(all_players))
+    
+    player_name = st.selectbox(
+        "Select a player",
+        available_players,
+        index=0,
+        key="player_team_select"
+    )
+    
+    if player_name:
+        result = get_player_team_stats(player_name)
+        
+        if result:
+            st.divider()
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Most Played Team", result['most_played_team'])
+            with col2:
+                st.metric("Win Rate with Team", f"{result['win_rate']:.1f}%")
+            with col3:
+                st.metric("Total Games", result['total_games'])
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Wins", result['wins'])
+            with col2:
+                st.metric("Losses", result['losses'])
+            
+            st.divider()
+            st.subheader("📊 All Teams Played")
+            
+            team_data = []
+            for team in result['all_teams']:
+                team_data.append({
+                    "Team": team['team'],
+                    "Games": team['total'],
+                    "Wins": team['wins'],
+                    "Losses": team['losses'],
+                    "Win Rate": f"{team['win_rate']:.1f}%"
+                })
+            
+            team_df = pd.DataFrame(team_data)
+            st.dataframe(team_df, use_container_width=True, hide_index=True)
+        else:
+            st.warning(f"No team/character data found for {player_name}.")
+
+
 def main():
     """Main application."""
     apply_custom_styles()
@@ -553,7 +617,8 @@ def main():
         "⚔️ Head-to-Head": show_h2h_tab,
         "🎭 Character Matchup": show_character_matchup_tab,
         "📈 Visualizations": show_visualization_tab,
-        "🔮 Predictions": show_prediction_tab
+        "🔮 Predictions": show_prediction_tab,
+        "🎮 Player Team": show_player_team_tab
     }
     
     selected_tab = st.sidebar.radio(
