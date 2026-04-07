@@ -429,20 +429,35 @@ def show_prediction_tab():
     
     with st.expander("ℹ️ About the Prediction Model"):
         st.write("""
-        This prediction model utilizes statistical analysis and machine learning algorithms trained on historical match data.
+        This prediction model uses machine learning algorithms trained on historical match data with a temporal split approach.
+        
+        **Training Approach:**
+        - Temporal split: Train on older data, test on most recent matches
+        - 80/10/10 split: 80% training, 10% validation, 10% testing
+        - 5-fold cross-validation for robust accuracy estimation
+        - Game-specific models trained for each game type
         
         **Features analyzed:**
-        - Player rank
-        - Win rate
-        - Recent performance trends
+        - Player rank and rank advantage
+        - Overall win rate and win rate differential
+        - Recent performance (last 5 matches)
         - Experience (total matches played)
-        - Follower metrics
+        - Head-to-head win rate and total games
+        - Character matchup win rate
+        - Momentum indicators (win streaks)
+        - Engagement metrics (followers, earnings)
+        - Stake placement patterns
+        
+        **Model Architecture:**
+        - **Winner Prediction:** Random Forest Classifier
+        - **Score Margin:** Gradient Boosting Regressor (predicts point differential)
+        - **Blowout Detection:** Gradient Boosting Classifier (predicts if margin > 5 points)
         
         **Predictions include:**
         - Winner prediction with confidence percentage
         - Predicted score margin (positive = Player 1 wins by X, negative = Player 2 wins by X)
         
-        **Methodology:** Random Forest classification (winner) and regression (margin) with feature scaling. Predictions are based on historical patterns and should be used for informational purposes only.
+        **Note:** Predictions are based on historical patterns and should be used for informational purposes only.
         """)
 
 
