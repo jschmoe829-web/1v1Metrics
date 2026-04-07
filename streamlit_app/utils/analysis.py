@@ -86,6 +86,16 @@ def analyze_matchup(player1: str, player2: str):
         t2_score = match.get('team2_score', match.get('team2_scores', ''))
         winner = match.get('winner_name', match.get('winner', ''))
         
+        start_date = match.get('start_date', '')
+        if start_date:
+            try:
+                dt = pd.to_datetime(start_date)
+                date_str = dt.strftime('%Y-%m-%d')
+            except:
+                date_str = str(start_date)
+        else:
+            date_str = ''
+        
         match_details.append({
             "team1": t1_name,
             "team2": t2_name,
@@ -93,7 +103,8 @@ def analyze_matchup(player1: str, player2: str):
             "team2_character": t2_char,
             "team1_score": t1_score,
             "team2_score": t2_score,
-            "winner": winner
+            "winner": winner,
+            "date": date_str
         })
     
     return {

@@ -213,6 +213,7 @@ def show_h2h_tab():
                     match_data = []
                     for m in analysis['matches']:
                         match_data.append({
+                            "Date": m['date'],
                             "Team 1": m['team1'],
                             "Team 1 Char": m['team1_character'],
                             "Score": f"{m['team1_score']} - {m['team2_score']}",
