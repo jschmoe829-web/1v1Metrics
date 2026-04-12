@@ -7,7 +7,7 @@ Uses full CSV data loaded in memory (not exposed to users).
 import streamlit as st
 import pandas as pd
 from streamlit_app.data.embedded_data import get_data, TOTAL_MATCHES, GAME_OPTIONS
-from streamlit_app.utils.analysis import analyze_matchup, get_available_players, get_player_stats, analyze_character_matchup, get_all_characters, get_player_team_stats
+from streamlit_app.utils.analysis import analyze_matchup, get_available_players, get_player_stats, analyze_character_matchup, get_all_characters, get_player_team_stats, get_player_team_games
 from streamlit_app.utils.visualization import get_viz_options, get_visualization, plot_h2h_comparison
 from streamlit_app.utils.card_generator import create_prediction_card
 from streamlit_app.models.pretrained_models import predict_match, PLAYER_STATS_DATABASE
@@ -610,6 +610,40 @@ def show_player_team_tab():
             
             team_df = pd.DataFrame(team_data)
             st.dataframe(team_df, use_container_width=True, hide_index=True)
+            
+            st.divider()
+            st.subheader("🎯 View Games by Team")
+            
+            team_options = [t['team'] for t in result['all_teams']]
+            selected_team = st.selectbox(
+                "Select a team to view all games",
+                team_options,
+                key="team_games_select"
+            )
+            
+            if selected_team:
+                games = get_player_team_games(player_name, selected_team)
+                
+                if games:
+                    st.write(f"**{len(games)} games** played with **{selected_team}**")
+                    
+                    games_data = []
+                    for g in games:
+                        games_data.append({
+                            "Date": g['date'],
+                            "Game": g['game'],
+                            "Mode": g['mode'],
+                            "Team": g['team'],
+                            "Opponent": g['opponent'],
+                            "Opp Char": g['opponent_char'],
+                            "Score": g['score'],
+                            "Result": g['result']
+                        })
+                    
+                    games_df = pd.DataFrame(games_data)
+                    st.dataframe(games_df, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No games found for this team.")
         else:
             st.warning(f"No team/character data found for {player_name}.")
 

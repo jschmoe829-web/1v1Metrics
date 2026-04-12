@@ -323,6 +323,83 @@ def get_all_characters():
     return sorted([c for c in chars if c])
 
 
+def get_player_team_games(player_name: str, team: str):
+    """Get all games a player played with a specific team/character."""
+    df = get_data()
+    
+    if df is None or df.empty:
+        return []
+    
+    games = []
+    
+    matches_as_team1 = df[(df['team1_name'] == player_name) & (df['team1_character_tag'] == team)]
+    for _, match in matches_as_team1.iterrows():
+        t1_score = match.get('team1_score', match.get('team1_scores', ''))
+        t2_score = match.get('team2_score', match.get('team2_scores', ''))
+        game_mode = match.get('game_mode_title', '')
+        game_name = match.get('game_name', '')
+        start_date = match.get('start_date', '')
+        
+        date_str = ''
+        if start_date:
+            try:
+                dt = pd.to_datetime(start_date)
+                date_str = dt.strftime('%Y-%m-%d')
+            except:
+                date_str = str(start_date)
+        
+        winner = match.get('winner_name', match.get('winner', ''))
+        result = "W" if winner == player_name else "L"
+        
+        games.append({
+            'date': date_str,
+            'game': game_name,
+            'mode': game_mode,
+            'team': match.get('team1_character_tag', ''),
+            'opponent': match.get('team2_name', ''),
+            'opponent_char': match.get('team2_character_tag', ''),
+            'score': f"{t1_score} - {t2_score}",
+            'result': result,
+            'team1_score': t1_score,
+            'team2_score': t2_score
+        })
+    
+    matches_as_team2 = df[(df['team2_name'] == player_name) & (df['team2_character_tag'] == team)]
+    for _, match in matches_as_team2.iterrows():
+        t1_score = match.get('team1_score', match.get('team1_scores', ''))
+        t2_score = match.get('team2_score', match.get('team2_scores', ''))
+        game_mode = match.get('game_mode_title', '')
+        game_name = match.get('game_name', '')
+        start_date = match.get('start_date', '')
+        
+        date_str = ''
+        if start_date:
+            try:
+                dt = pd.to_datetime(start_date)
+                date_str = dt.strftime('%Y-%m-%d')
+            except:
+                date_str = str(start_date)
+        
+        winner = match.get('winner_name', match.get('winner', ''))
+        result = "W" if winner == player_name else "L"
+        
+        games.append({
+            'date': date_str,
+            'game': game_name,
+            'mode': game_mode,
+            'team': match.get('team2_character_tag', ''),
+            'opponent': match.get('team1_name', ''),
+            'opponent_char': match.get('team1_character_tag', ''),
+            'score': f"{t1_score} - {t2_score}",
+            'result': result,
+            'team1_score': t1_score,
+            'team2_score': t2_score
+        })
+    
+    games.sort(key=lambda x: x['date'], reverse=True)
+    return games
+
+
 def get_player_team_stats(player_name: str):
     """Get most played team/character for a player and their win rate with it."""
     df = get_data()
