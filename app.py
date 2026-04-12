@@ -596,7 +596,7 @@ def show_player_team_tab():
                 st.metric("Losses", result['losses'])
             
             st.divider()
-            st.subheader("📊 All Teams Played")
+            st.subheader("📊 All Teams Played (Click a row to view games)")
             
             team_data = []
             for team in result['all_teams']:
@@ -609,19 +609,41 @@ def show_player_team_tab():
                 })
             
             team_df = pd.DataFrame(team_data)
-            st.dataframe(team_df, use_container_width=True, hide_index=True)
             
-            st.divider()
-            st.subheader("🎯 View Games by Team")
-            
-            team_options = [t['team'] for t in result['all_teams']]
-            selected_team = st.selectbox(
-                "Select a team to view all games",
-                team_options,
-                key="team_games_select"
+            edited_df = st.data_editor(
+                team_df, 
+                use_container_width=True, 
+                hide_index=True,
+                disabled=True,
+                num_rows="dynamic",
+                key="team_editor"
             )
             
+            selected_team_idx = st.session_state.get("team_editor_selection", 0)
+            selected_team = team_data[selected_team_idx]["Team"]
+            
             if selected_team:
+                games = get_player_team_games(player_name, selected_team)
+                
+                if games:
+                    st.divider()
+                    st.write(f"**{len(games)} games** played with **{selected_team}**")
+                    
+                    games_data = []
+                    for g in games:
+                        games_data.append({
+                            "Date": g['date'],
+                            "Game": g['game'],
+                            "Mode": g['mode'],
+                            "Team": g['team'],
+                            "Opponent": g['opponent'],
+                            "Opp Char": g['opponent_char'],
+                            "Score": g['score'],
+                            "Result": g['result']
+                        })
+                    
+                    games_df = pd.DataFrame(games_data)
+                    st.dataframe(games_df, use_container_width=True, hide_index=True)
                 games = get_player_team_games(player_name, selected_team)
                 
                 if games:
